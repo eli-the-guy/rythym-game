@@ -8,15 +8,21 @@
     />
     <title>ONLINE Rhythm Game</title>
     <style>
+      html,
       body {
+        width: 100%;
+        height: 100%;
         margin: 0;
-        background: black;
         overflow: hidden;
+        touch-action: none; /* prevent pinch/scroll gestures */
+        background: black;
         font-family: Arial;
         color: white;
       }
       canvas {
         display: block;
+        width: 100%;
+        height: 100%;
       }
       #menu {
         position: absolute;
@@ -42,9 +48,9 @@
       .touchBtn {
         position: absolute;
         bottom: 0;
-        width: 25%;
-        height: 30vh;
-        background: rgba(0, 255, 255, 0.15);
+        width: 24%;
+        height: 35vh;
+        background: rgba(0, 255, 255, 0.2);
         border: 1px solid #0ff;
       }
     </style>
@@ -73,7 +79,7 @@
     <div class="touchBtn" style="left: 75%" data-lane="3"></div>
 
     <canvas id="c"></canvas>
-    <audio id="music" playsinline crossorigin="anonymous"></audio>
+    <audio id="music" playsinline controls crossorigin="anonymous"></audio>
 
     <script>
       const c = document.getElementById("c"),
@@ -91,33 +97,30 @@
 
       // Keyboard mappings: WASD, QWER, UIOP
       const keyToLane = {
-        // WASD
         A: 0,
         W: 1,
         S: 2,
         D: 3,
-        // QWER
         Q: 0,
         W: 1,
         E: 2,
         R: 3,
-        // UIOP
         U: 0,
         I: 1,
         O: 2,
         P: 3,
       };
 
-      // Easy Mode variables
-      let NOTE_SPEED = 500; // normal speed
-      let PERFECT = 0.12; // normal perfect window
-      let GOOD = 0.25; // normal good window
+      // Timing and speed
+      let NOTE_SPEED = 500;
+      let PERFECT = 0.12;
+      let GOOD = 0.25;
 
-      const EASY_SPEED = 300; // slower notes
+      const EASY_SPEED = 300;
       const EASY_PERFECT = 0.18;
       const EASY_GOOD = 0.35;
 
-      // Easy Mode toggle
+      // Easy Mode button
       document.getElementById("easyBtn").onclick = () => {
         NOTE_SPEED = EASY_SPEED;
         PERFECT = EASY_PERFECT;
@@ -125,12 +128,14 @@
         alert("Easy Mode Activated! Notes are slower and more forgiving.");
       };
 
+      // Unlock audio context
       async function unlock() {
         if (!audioCtx)
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === "suspended") await audioCtx.resume();
       }
 
+      // Analyze audio to generate beats
       async function analyze(buffer) {
         const audio = await audioCtx.decodeAudioData(buffer.slice(0));
         const data = audio.getChannelData(0);
@@ -194,7 +199,6 @@
         });
       }
 
-      // Hit function with forgiving timing
       function hit(l) {
         let best = null,
           bd = 999;
@@ -236,40 +240,41 @@
         if (l !== undefined) hit(l);
       });
 
-      // Touch controls
+      // Touch controls (mobile-ready)
       document.querySelectorAll(".touchBtn").forEach((btn) => {
         btn.addEventListener(
           "touchstart",
-          () => hit(parseInt(btn.dataset.lane)),
-          { passive: true },
+          (e) => {
+            e.preventDefault(); // prevent scrolling
+            hit(parseInt(btn.dataset.lane));
+          },
+          { passive: false },
         );
       });
 
-      // FILE LOAD
+      // File upload
       document.getElementById("fileBtn").onclick = async () => {
         await unlock();
         const input = document.createElement("input");
         input.type = "file";
-        input.accept = "audio/*,.mp3,.wav,.m4a";
+        input.accept = "audio/mpeg,audio/wav,audio/mp4,audio/*"; // Android/iOS friendly
         input.onchange = async (e) => {
           const file = e.target.files[0];
-          if (!file) return;
+          if (!file) return alert("No file selected");
           const buf = await file.arrayBuffer();
           start(buf, URL.createObjectURL(file));
         };
         input.click();
       };
 
-      // URL LOAD
+      // URL load
       async function loadURL() {
         try {
           await unlock();
           const url = document.getElementById("urlInput").value.trim();
           if (!url) return alert("Paste a valid audio URL");
-
           const res = await fetch(url, { mode: "cors" });
           if (!res.ok) throw new Error("Fetch failed");
-
           const buf = await res.arrayBuffer();
           start(buf, url);
         } catch (err) {
