@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=no"
     />
-    <title>FINAL BOSS Rhythm Game (Mobile Perfect)</title>
+    <title>FINAL BOSS – FLAWLESS LOADING</title>
     <style>
       body {
         margin: 0;
@@ -19,14 +19,17 @@
       canvas {
         display: block;
       }
-      #uploadBox {
+      #menu {
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        padding: 30px;
-        border: 2px solid #0ff;
         text-align: center;
+      }
+      button {
+        padding: 12px 20px;
+        margin: 6px;
+        font-size: 16px;
       }
       #ui {
         position: absolute;
@@ -34,18 +37,8 @@
         left: 10px;
       }
       #combo {
-        font-size: 26px;
+        font-size: 24px;
         color: #0ff;
-      }
-      #healthBar {
-        width: 200px;
-        height: 10px;
-        background: #400;
-      }
-      #health {
-        height: 100%;
-        width: 100%;
-        background: #0f0;
       }
       .touchBtn {
         position: absolute;
@@ -58,12 +51,21 @@
     </style>
   </head>
   <body>
-    <div id="uploadBox">TAP TO LOAD SONG</div>
+    <div id="menu">
+      <h2>LOAD SONG</h2>
+      <button id="fileBtn">📁 Choose File</button><br />
+      <button onclick="loadDemo()">🎵 Play Demo Song</button><br />
+      <input
+        id="urlInput"
+        placeholder="Paste audio URL"
+        style="width: 220px; padding: 8px"
+      /><br />
+      <button onclick="loadURL()">🌐 Load from URL</button>
+    </div>
+
     <div id="ui">
-      <h3>MOBILE PERFECT MODE</h3>
       Score: <span id="score">0</span><br />
       <div id="combo">Combo: 0</div>
-      <div id="healthBar"><div id="health"></div></div>
     </div>
 
     <div class="touchBtn" style="left: 0" data-lane="0"></div>
@@ -80,51 +82,43 @@
       c.width = innerWidth;
       c.height = innerHeight;
       const music = document.getElementById("music");
-      const box = document.getElementById("uploadBox");
+      const menu = document.getElementById("menu");
 
       let audioCtx;
-
-      const keys = ["A", "S", "D", "F"];
-      const laneW = c.width / 4;
       let notes = [],
         score = 0,
-        combo = 0,
-        health = 100;
+        combo = 0;
+      const laneW = c.width / 4;
 
-      async function unlockAudio() {
-        if (!audioCtx) {
+      async function unlock() {
+        if (!audioCtx)
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === "suspended") {
-          await audioCtx.resume();
-        }
+        if (audioCtx.state === "suspended") await audioCtx.resume();
       }
 
-      async function analyze(file) {
-        const buf = await file.arrayBuffer();
-        const audio = await audioCtx.decodeAudioData(buf);
+      async function analyze(arrayBuffer) {
+        const audio = await audioCtx.decodeAudioData(arrayBuffer);
         const data = audio.getChannelData(0);
         const sr = audio.sampleRate;
-        let size = 2048,
-          beats = [];
+        let beats = [],
+          size = 2048;
         for (let i = 0; i < data.length; i += size) {
           let sum = 0;
           for (let j = 0; j < size; j++) {
             let v = data[i + j] || 0;
             sum += v * v;
           }
-          let e = Math.sqrt(sum / size);
-          if (e > 0.25) beats.push(i / sr);
+          if (Math.sqrt(sum / size) > 0.25) beats.push(i / sr);
         }
-        let final = [],
+        let out = [],
           last = 0;
         beats.forEach((t) => {
           if (t - last > 0.2) {
-            final.push(t);
+            out.push(t);
             last = t;
           }
         });
-        return final;
+        return out;
       }
 
       function spawn(b) {
@@ -146,8 +140,7 @@
         ctx.fillRect(0, c.height - 120, c.width, 5);
         notes.forEach((n) => {
           if (n.hit) return;
-          let d = n.time - music.currentTime;
-          let y = c.height - 120 - d * 500;
+          let y = c.height - 120 - (n.time - music.currentTime) * 500;
           ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
           ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 20);
         });
@@ -161,18 +154,8 @@
           ) {
             n.hit = true;
             combo = 0;
-            health -= 5;
           }
         });
-        document.getElementById("health").style.width = health + "%";
-        if (health <= 0) {
-          alert("FAILED");
-          location.reload();
-        }
-      }
-
-      function vibrate() {
-        if (navigator.vibrate) navigator.vibrate(10);
       }
 
       function hit(l) {
@@ -187,15 +170,11 @@
           }
         });
         if (!best) return;
-        if (bd < 0.1) {
+        if (bd < 0.12) {
           combo++;
           score += 100 * combo;
           best.hit = true;
-          vibrate();
-        } else {
-          combo = 0;
-          health -= 3;
-        }
+        } else combo = 0;
         document.getElementById("score").innerText = score;
         document.getElementById("combo").innerText = "Combo: " + combo;
       }
@@ -206,40 +185,63 @@
         requestAnimationFrame(loop);
       }
 
-      // TOUCH INPUT (better response)
+      // controls
+      addEventListener("keydown", (e) => {
+        let l = ["A", "S", "D", "F"].indexOf(e.key.toUpperCase());
+        if (l != -1) hit(l);
+      });
+
       document.querySelectorAll(".touchBtn").forEach((btn) => {
         btn.addEventListener(
           "touchstart",
-          async () => {
-            await unlockAudio();
-            hit(parseInt(btn.dataset.lane));
-          },
+          () => hit(parseInt(btn.dataset.lane)),
           { passive: true },
         );
       });
 
-      // upload
-      box.onclick = async () => {
-        await unlockAudio();
+      // ===== LOADING METHODS =====
+      document.getElementById("fileBtn").onclick = async () => {
+        await unlock();
         const input = document.createElement("input");
         input.type = "file";
-        input.accept = "audio/*";
-        input.onchange = (e) => {
+        input.accept = "audio/*,.mp3,.wav,.m4a";
+        input.onchange = async (e) => {
           const file = e.target.files[0];
-          if (file) start(file);
+          if (!file) return;
+          const buf = await file.arrayBuffer();
+          start(buf, URL.createObjectURL(file));
         };
         input.click();
       };
 
-      async function start(file) {
-        box.style.display = "none";
-        music.src = URL.createObjectURL(file);
+      async function loadURL() {
+        await unlock();
+        const url = document.getElementById("urlInput").value;
+        if (!url) return alert("paste a URL");
+        const res = await fetch(url);
+        const buf = await res.arrayBuffer();
+        start(buf, url);
+      }
 
-        await unlockAudio();
-        await music.play().catch(() => {});
+      function loadDemo() {
+        const demo =
+          "https://cdn.pixabay.com/download/audio/2022/03/15/audio_demo.mp3";
+        loadFromURL(demo);
+      }
 
-        const beats = await analyze(file);
+      async function loadFromURL(url) {
+        await unlock();
+        const res = await fetch(url);
+        const buf = await res.arrayBuffer();
+        start(buf, url);
+      }
+
+      async function start(buffer, src) {
+        menu.style.display = "none";
+        const beats = await analyze(buffer);
         spawn(beats);
+        music.src = src;
+        await music.play().catch(() => {});
         loop();
       }
     </script>
