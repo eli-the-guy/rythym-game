@@ -61,7 +61,7 @@
       <button id="fileBtn">📁 Upload Song</button><br />
       <input
         id="urlInput"
-        placeholder="Paste direct audio link (.mp3/.wav/.m4a)"
+        placeholder="Paste direct audio link or Google Drive link"
         style="width: 260px; padding: 8px"
       /><br />
       <button onclick="loadURL()">🌐 Load URL</button><br />
@@ -267,7 +267,7 @@
           music.src = url;
 
           await music.play().catch(() => {
-            alert("Tap the screen to start the music!");
+            alert("Tap the screen to start the music on mobile");
           });
 
           const buf = await file.arrayBuffer();
@@ -278,22 +278,38 @@
         input.click();
       };
 
-      // URL LOAD
+      // URL LOAD with Google Drive auto-conversion
       async function loadURL() {
         try {
           await unlock();
-          const url = document.getElementById("urlInput").value.trim();
+          let url = document.getElementById("urlInput").value.trim();
           if (!url) return alert("Paste a valid audio URL");
+
+          // Detect Google Drive links and convert them
+          const driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+          if (driveMatch) {
+            const fileId = driveMatch[1];
+            url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+          }
+
           const res = await fetch(url, { mode: "cors" });
           if (!res.ok) throw new Error("Fetch failed");
+
           const buf = await res.arrayBuffer();
-          music.src = url;
-          await music.play().catch(() => alert("Tap to start music on mobile"));
           const beats = await analyze(buf);
           spawn(beats);
+
+          music.src = url;
+          await music
+            .play()
+            .catch(() => alert("Tap the screen to start the music on mobile"));
+
           loop();
         } catch (err) {
-          alert("URL failed. Use direct .mp3/.wav link or upload file.");
+          alert(
+            "URL failed. Use direct .mp3/.wav link, Google Drive link, or upload file.",
+          );
+          console.error(err);
         }
       }
     </script>
