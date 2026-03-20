@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=no"
     />
-    <title>FINAL BOSS – FLAWLESS LOADING</title>
+    <title>ONLINE Rhythm Game</title>
     <style>
       body {
         margin: 0;
@@ -14,7 +14,6 @@
         overflow: hidden;
         font-family: Arial;
         color: white;
-        touch-action: none;
       }
       canvas {
         display: block;
@@ -52,15 +51,14 @@
   </head>
   <body>
     <div id="menu">
-      <h2>LOAD SONG</h2>
-      <button id="fileBtn">📁 Choose File</button><br />
-      <button onclick="loadDemo()">🎵 Play Demo Song</button><br />
+      <h2>ONLINE MODE</h2>
+      <button id="fileBtn">📁 Upload Song</button><br />
       <input
         id="urlInput"
-        placeholder="Paste audio URL"
-        style="width: 220px; padding: 8px"
+        placeholder="Paste direct audio link (.mp3/.wav/.m4a)"
+        style="width: 260px; padding: 8px"
       /><br />
-      <button onclick="loadURL()">🌐 Load from URL</button>
+      <button onclick="loadURL()">🌐 Load URL</button>
     </div>
 
     <div id="ui">
@@ -74,7 +72,7 @@
     <div class="touchBtn" style="left: 75%" data-lane="3"></div>
 
     <canvas id="c"></canvas>
-    <audio id="music" playsinline></audio>
+    <audio id="music" playsinline crossorigin="anonymous"></audio>
 
     <script>
       const c = document.getElementById("c"),
@@ -89,6 +87,7 @@
         score = 0,
         combo = 0;
       const laneW = c.width / 4;
+      const keys = ["W", "A", "S", "D"];
 
       async function unlock() {
         if (!audioCtx)
@@ -96,8 +95,8 @@
         if (audioCtx.state === "suspended") await audioCtx.resume();
       }
 
-      async function analyze(arrayBuffer) {
-        const audio = await audioCtx.decodeAudioData(arrayBuffer);
+      async function analyze(buffer) {
+        const audio = await audioCtx.decodeAudioData(buffer.slice(0));
         const data = audio.getChannelData(0);
         const sr = audio.sampleRate;
         let beats = [],
@@ -185,11 +184,13 @@
         requestAnimationFrame(loop);
       }
 
-      // controls
+      // WASD controls
       addEventListener("keydown", (e) => {
-        let l = ["A", "S", "D", "F"].indexOf(e.key.toUpperCase());
+        let l = keys.indexOf(e.key.toUpperCase());
         if (l != -1) hit(l);
       });
+
+      // touch
 
       document.querySelectorAll(".touchBtn").forEach((btn) => {
         btn.addEventListener(
@@ -199,7 +200,8 @@
         );
       });
 
-      // ===== LOADING METHODS =====
+      // FILE LOAD
+
       document.getElementById("fileBtn").onclick = async () => {
         await unlock();
         const input = document.createElement("input");
@@ -214,26 +216,21 @@
         input.click();
       };
 
+      // URL LOAD (FIXED)
       async function loadURL() {
-        await unlock();
-        const url = document.getElementById("urlInput").value;
-        if (!url) return alert("paste a URL");
-        const res = await fetch(url);
-        const buf = await res.arrayBuffer();
-        start(buf, url);
-      }
+        try {
+          await unlock();
+          const url = document.getElementById("urlInput").value.trim();
+          if (!url) return alert("Paste a valid audio URL");
 
-      function loadDemo() {
-        const demo =
-          "https://cdn.pixabay.com/download/audio/2022/03/15/audio_demo.mp3";
-        loadFromURL(demo);
-      }
+          const res = await fetch(url, { mode: "cors" });
+          if (!res.ok) throw new Error("Fetch failed");
 
-      async function loadFromURL(url) {
-        await unlock();
-        const res = await fetch(url);
-        const buf = await res.arrayBuffer();
-        start(buf, url);
+          const buf = await res.arrayBuffer();
+          start(buf, url);
+        } catch (err) {
+          alert("URL failed. Use direct .mp3/.wav link or upload file.");
+        }
       }
 
       async function start(buffer, src) {
