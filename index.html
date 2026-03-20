@@ -53,6 +53,22 @@
         background: rgba(0, 255, 255, 0.2);
         border: 1px solid #0ff;
       }
+      #tapOverlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        font-size: 28px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        cursor: pointer;
+        z-index: 1000;
+      }
     </style>
   </head>
   <body>
@@ -80,6 +96,8 @@
       <span id="sensitivityValue">0.15</span>
     </div>
 
+    <div id="tapOverlay">Tap to Start Music</div>
+
     <div id="ui">
       Score: <span id="score">0</span><br />
       <div id="combo">Combo: 0</div>
@@ -100,6 +118,7 @@
       c.height = innerHeight;
       const music = document.getElementById("music");
       const menu = document.getElementById("menu");
+      const tapOverlay = document.getElementById("tapOverlay");
 
       let audioCtx;
       let notes = [],
@@ -154,6 +173,16 @@
         if (audioCtx.state === "suspended") await audioCtx.resume();
       }
 
+      // Show overlay and wait for tap to start music
+      function showTapOverlay() {
+        tapOverlay.style.display = "flex";
+        tapOverlay.onclick = async () => {
+          await unlock();
+          tapOverlay.style.display = "none";
+          music.play().catch(() => {});
+        };
+      }
+
       // Analyze audio buffer to generate beats
       async function analyze(buffer) {
         const threshold = parseFloat(
@@ -174,7 +203,6 @@
           if (Math.sqrt(sum / size) > threshold) beats.push(i / sr);
         }
 
-        // remove beats that are too close together
         let out = [],
           last = 0;
         beats.forEach((t) => {
@@ -265,7 +293,7 @@
         if (l !== undefined) hit(l);
       });
 
-      // Touch controls (mobile-ready)
+      // Touch controls
       document.querySelectorAll(".touchBtn").forEach((btn) => {
         btn.addEventListener(
           "touchstart",
@@ -277,7 +305,7 @@
         );
       });
 
-      // FILE UPLOAD (mobile-friendly)
+      // File upload
       document.getElementById("fileBtn").onclick = async () => {
         const input = document.createElement("input");
         input.type = "file";
@@ -286,26 +314,23 @@
           const file = e.target.files[0];
           if (!file) return alert("No file selected");
 
-          await unlock();
           const url = URL.createObjectURL(file);
           music.src = url;
-
-          await music.play().catch(() => {
-            alert("Tap the screen to start the music on mobile");
-          });
 
           const buf = await file.arrayBuffer();
           const beats = await analyze(buf);
           spawn(beats);
+
+          menu.style.display = "none";
           loop();
+          showTapOverlay();
         };
         input.click();
       };
 
-      // URL LOAD with Google Drive support
+      // URL Load with Google Drive support
       async function loadURL() {
         try {
-          await unlock();
           let url = document.getElementById("urlInput").value.trim();
           if (!url) return alert("Paste a valid audio URL");
 
@@ -323,11 +348,9 @@
           spawn(beats);
 
           music.src = url;
-          await music
-            .play()
-            .catch(() => alert("Tap the screen to start the music on mobile"));
-
+          menu.style.display = "none";
           loop();
+          showTapOverlay();
         } catch (err) {
           alert(
             "URL failed. Use direct .mp3/.wav link, Google Drive link, or upload file.",
