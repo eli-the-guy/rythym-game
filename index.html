@@ -1,179 +1,247 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FINAL BOSS Rhythm Game (Easy Mode Added)</title>
-<style>
-body{margin:0;background:black;overflow:hidden;font-family:Arial;color:white;touch-action:none}
-canvas{display:block}
-#uploadBox{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:30px;border:2px solid #0ff;text-align:center}
-#ui{position:absolute;top:10px;left:10px}
-#combo{font-size:26px;color:#0ff}
-#healthBar{width:200px;height:10px;background:#400}
-#health{height:100%;width:100%;background:#0f0}
-#modeSelect{margin-top:10px}
-.touchBtn{position:absolute;bottom:0;width:25%;height:120px;background:rgba(0,255,255,0.1);border:1px solid #0ff}
-</style>
-</head>
-<body>
-<div id="uploadBox">
-  <div>DROP / TAP TO LOAD SONG</div>
-  <div id="modeSelect">
-    <button onclick="setMode('easy')">Easy</button>
-    <button onclick="setMode('normal')">Normal</button>
-  </div>
-</div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>FINAL BOSS Rhythm Game (Mobile Perfect)</title>
+    <style>
+      body {
+        margin: 0;
+        background: black;
+        overflow: hidden;
+        font-family: Arial;
+        color: white;
+        touch-action: none;
+      }
+      canvas {
+        display: block;
+      }
+      #uploadBox {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 30px;
+        border: 2px solid #0ff;
+        text-align: center;
+      }
+      #ui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+      }
+      #combo {
+        font-size: 26px;
+        color: #0ff;
+      }
+      #healthBar {
+        width: 200px;
+        height: 10px;
+        background: #400;
+      }
+      #health {
+        height: 100%;
+        width: 100%;
+        background: #0f0;
+      }
+      .touchBtn {
+        position: absolute;
+        bottom: 0;
+        width: 25%;
+        height: 30vh;
+        background: rgba(0, 255, 255, 0.15);
+        border: 1px solid #0ff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="uploadBox">TAP TO LOAD SONG</div>
+    <div id="ui">
+      <h3>MOBILE PERFECT MODE</h3>
+      Score: <span id="score">0</span><br />
+      <div id="combo">Combo: 0</div>
+      <div id="healthBar"><div id="health"></div></div>
+    </div>
 
-<div id="ui">
-<h3>FINAL BOSS MODE</h3>
-Mode: <span id="modeLabel">Normal</span><br>
-Score: <span id="score">0</span><br>
-<div id="combo">Combo: 0</div>
-<div id="healthBar"><div id="health"></div></div>
-</div>
+    <div class="touchBtn" style="left: 0" data-lane="0"></div>
+    <div class="touchBtn" style="left: 25%" data-lane="1"></div>
+    <div class="touchBtn" style="left: 50%" data-lane="2"></div>
+    <div class="touchBtn" style="left: 75%" data-lane="3"></div>
 
-<div class="touchBtn" style="left:0" data-lane="0"></div>
-<div class="touchBtn" style="left:25%" data-lane="1"></div>
-<div class="touchBtn" style="left:50%" data-lane="2"></div>
-<div class="touchBtn" style="left:75%" data-lane="3"></div>
+    <canvas id="c"></canvas>
+    <audio id="music" playsinline></audio>
 
-<canvas id="c"></canvas>
-<audio id="music"></audio>
+    <script>
+      const c = document.getElementById("c"),
+        ctx = c.getContext("2d");
+      c.width = innerWidth;
+      c.height = innerHeight;
+      const music = document.getElementById("music");
+      const box = document.getElementById("uploadBox");
 
-<script>
-const c=document.getElementById("c"),ctx=c.getContext("2d");
-c.width=innerWidth;c.height=innerHeight;
-const music=document.getElementById("music");
-const box=document.getElementById("uploadBox");
+      let audioCtx;
 
-const keys=["A","S","D","F"];
-const laneW=c.width/4;
+      const keys = ["A", "S", "D", "F"];
+      const laneW = c.width / 4;
+      let notes = [],
+        score = 0,
+        combo = 0,
+        health = 100;
 
-let notes=[],score=0,combo=0,health=100;
-let mode="normal";
-let noteSpeed=600;
-let hitWindow={perfect:0.07,good:0.15,ok:0.25};
+      async function unlockAudio() {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") {
+          await audioCtx.resume();
+        }
+      }
 
-function setMode(m){
-  mode=m;
-  document.getElementById("modeLabel").innerText=m.toUpperCase();
+      async function analyze(file) {
+        const buf = await file.arrayBuffer();
+        const audio = await audioCtx.decodeAudioData(buf);
+        const data = audio.getChannelData(0);
+        const sr = audio.sampleRate;
+        let size = 2048,
+          beats = [];
+        for (let i = 0; i < data.length; i += size) {
+          let sum = 0;
+          for (let j = 0; j < size; j++) {
+            let v = data[i + j] || 0;
+            sum += v * v;
+          }
+          let e = Math.sqrt(sum / size);
+          if (e > 0.25) beats.push(i / sr);
+        }
+        let final = [],
+          last = 0;
+        beats.forEach((t) => {
+          if (t - last > 0.2) {
+            final.push(t);
+            last = t;
+          }
+        });
+        return final;
+      }
 
-  if(m==="easy"){
-    noteSpeed=400;
-    hitWindow={perfect:0.12,good:0.22,ok:0.35};
-  }else{
-    noteSpeed=600;
-    hitWindow={perfect:0.07,good:0.15,ok:0.25};
-  }
-}
+      function spawn(b) {
+        notes = b.map((t) => ({
+          lane: Math.floor(Math.random() * 4),
+          time: t,
+          hit: false,
+        }));
+      }
 
-async function analyze(file){
- const ctxA=new (window.AudioContext||window.webkitAudioContext)();
- const buf=await file.arrayBuffer();
- const audio=await ctxA.decodeAudioData(buf);
- const data=audio.getChannelData(0);
- const sr=audio.sampleRate;
- let size=2048,beats=[];
- for(let i=0;i<data.length;i+=size){
-  let sum=0;
-  for(let j=0;j<size;j++){let v=data[i+j]||0;sum+=v*v}
-  let e=Math.sqrt(sum/size);
-  if(e> (mode==="easy"?0.3:0.2)) beats.push(i/sr);
- }
- let final=[],last=0;
- beats.forEach(t=>{if(t-last>(mode==="easy"?0.25:0.15)){final.push(t);last=t}});
- return final;
-}
+      function draw() {
+        ctx.fillStyle = "rgba(0,0,0,0.3)";
+        ctx.fillRect(0, 0, c.width, c.height);
+        for (let i = 0; i < 4; i++) {
+          ctx.fillStyle = "rgba(80,80,150,0.3)";
+          ctx.fillRect(i * laneW, 0, laneW, c.height);
+        }
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, c.height - 120, c.width, 5);
+        notes.forEach((n) => {
+          if (n.hit) return;
+          let d = n.time - music.currentTime;
+          let y = c.height - 120 - d * 500;
+          ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
+          ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 20);
+        });
+      }
 
-function spawn(b){notes=b.map(t=>({lane:Math.floor(Math.random()*4),time:t,hit:false}))}
+      function update() {
+        notes.forEach((n) => {
+          if (
+            !n.hit &&
+            c.height - 120 - (n.time - music.currentTime) * 500 > c.height
+          ) {
+            n.hit = true;
+            combo = 0;
+            health -= 5;
+          }
+        });
+        document.getElementById("health").style.width = health + "%";
+        if (health <= 0) {
+          alert("FAILED");
+          location.reload();
+        }
+      }
 
-function draw(){
- ctx.fillStyle="rgba(0,0,0,0.3)";ctx.fillRect(0,0,c.width,c.height);
- for(let i=0;i<4;i++){ctx.fillStyle="rgba(80,80,150,0.3)";ctx.fillRect(i*laneW,0,laneW,c.height)}
- ctx.fillStyle="#fff";ctx.fillRect(0,c.height-120,c.width,5);
- notes.forEach(n=>{
-  if(n.hit)return;
-  let d=n.time-music.currentTime;
-  let y=c.height-120-d*noteSpeed;
-  ctx.fillStyle=`hsl(${n.lane*90},100%,60%)`;
-  ctx.fillRect(n.lane*laneW+20,y,laneW-40,20);
- });
-}
+      function vibrate() {
+        if (navigator.vibrate) navigator.vibrate(10);
+      }
 
-function update(){
- notes.forEach(n=>{
-  if(!n.hit && (c.height-120-(n.time-music.currentTime)*noteSpeed)>c.height){
-   n.hit=true;combo=0;health-= (mode==="easy"?5:10);
-  }
- });
- document.getElementById("health").style.width=health+"%";
- if(health<=0){alert("FAILED");location.reload();}
-}
+      function hit(l) {
+        let best = null,
+          bd = 999;
+        notes.forEach((n) => {
+          if (n.hit || n.lane !== l) return;
+          let d = Math.abs(n.time - music.currentTime);
+          if (d < bd) {
+            bd = d;
+            best = n;
+          }
+        });
+        if (!best) return;
+        if (bd < 0.1) {
+          combo++;
+          score += 100 * combo;
+          best.hit = true;
+          vibrate();
+        } else {
+          combo = 0;
+          health -= 3;
+        }
+        document.getElementById("score").innerText = score;
+        document.getElementById("combo").innerText = "Combo: " + combo;
+      }
 
-function hit(l){
- let best=null,bd=999;
- notes.forEach(n=>{
-  if(n.hit||n.lane!==l)return;
-  let d=Math.abs(n.time-music.currentTime);
-  if(d<bd){bd=d;best=n}
- });
- if(!best)return;
+      function loop() {
+        draw();
+        update();
+        requestAnimationFrame(loop);
+      }
 
- let gain=0;
- if(bd<hitWindow.perfect){gain=300;combo++}
- else if(bd<hitWindow.good){gain=150;combo++}
- else if(bd<hitWindow.ok){gain=50;combo++}
- else{combo=0;health-= (mode==="easy"?3:5);return}
+      // TOUCH INPUT (better response)
+      document.querySelectorAll(".touchBtn").forEach((btn) => {
+        btn.addEventListener(
+          "touchstart",
+          async () => {
+            await unlockAudio();
+            hit(parseInt(btn.dataset.lane));
+          },
+          { passive: true },
+        );
+      });
 
- best.hit=true;
- score+=gain*combo;
- document.getElementById("score").innerText=score;
- document.getElementById("combo").innerText="Combo: "+combo;
-}
+      // upload
+      box.onclick = async () => {
+        await unlockAudio();
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "audio/*";
+        input.onchange = (e) => {
+          const file = e.target.files[0];
+          if (file) start(file);
+        };
+        input.click();
+      };
 
-function loop(){draw();update();requestAnimationFrame(loop)}
+      async function start(file) {
+        box.style.display = "none";
+        music.src = URL.createObjectURL(file);
 
-addEventListener("keydown",e=>{
- let l=keys.indexOf(e.key.toUpperCase());
- if(l!=-1)hit(l);
-});
+        await unlockAudio();
+        await music.play().catch(() => {});
 
-document.querySelectorAll(".touchBtn").forEach(btn=>{
- btn.addEventListener("touchstart",()=>hit(parseInt(btn.dataset.lane)));
-});
-
-// upload (MOBILE FIXED)
-box.onclick=()=>{
-  const input=document.createElement("input");
-  input.type="file";
-  input.accept="audio/*";
-  input.capture="environment";
-
-  input.onchange=(e)=>{
-    const file=e.target.files[0];
-    if(file) start(file);
-  };
-
-  input.click();
-};
-
-box.ondrop=e=>{
-  e.preventDefault();
-  const file=e.dataTransfer.files[0];
-  if(file) start(file);
-};
-
-box.ondragover=e=>e.preventDefault();
-
-async function start(file){
- box.style.display="none";
- music.src=URL.createObjectURL(file);
- let beats=await analyze(file);
- spawn(beats);
- music.play();
- loop();
-}
-</script>
-</body>
+        const beats = await analyze(file);
+        spawn(beats);
+        loop();
+      }
+    </script>
+  </body>
 </html>
