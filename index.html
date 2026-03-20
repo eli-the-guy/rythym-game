@@ -128,14 +128,14 @@
         alert("Easy Mode Activated! Notes are slower and more forgiving.");
       };
 
-      // Unlock audio context
+      // Unlock audio context function
       async function unlock() {
         if (!audioCtx)
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === "suspended") await audioCtx.resume();
       }
 
-      // Analyze audio to generate beats
+      // Analyze audio buffer to generate beats
       async function analyze(buffer) {
         const audio = await audioCtx.decodeAudioData(buffer.slice(0));
         const data = audio.getChannelData(0);
@@ -252,22 +252,33 @@
         );
       });
 
-      // File upload
+      // FILE UPLOAD (mobile-friendly)
       document.getElementById("fileBtn").onclick = async () => {
-        await unlock();
         const input = document.createElement("input");
         input.type = "file";
         input.accept = "audio/mpeg,audio/wav,audio/mp4,audio/*"; // Android/iOS friendly
         input.onchange = async (e) => {
           const file = e.target.files[0];
           if (!file) return alert("No file selected");
+
+          // Unlock and play inside the tap event
+          await unlock();
+          const url = URL.createObjectURL(file);
+          music.src = url;
+
+          await music.play().catch(() => {
+            alert("Tap the screen to start the music!");
+          });
+
           const buf = await file.arrayBuffer();
-          start(buf, URL.createObjectURL(file));
+          const beats = await analyze(buf);
+          spawn(beats);
+          loop();
         };
         input.click();
       };
 
-      // URL load
+      // URL LOAD
       async function loadURL() {
         try {
           await unlock();
@@ -276,19 +287,14 @@
           const res = await fetch(url, { mode: "cors" });
           if (!res.ok) throw new Error("Fetch failed");
           const buf = await res.arrayBuffer();
-          start(buf, url);
+          music.src = url;
+          await music.play().catch(() => alert("Tap to start music on mobile"));
+          const beats = await analyze(buf);
+          spawn(beats);
+          loop();
         } catch (err) {
           alert("URL failed. Use direct .mp3/.wav link or upload file.");
         }
-      }
-
-      async function start(buffer, src) {
-        menu.style.display = "none";
-        const beats = await analyze(buffer);
-        spawn(beats);
-        music.src = src;
-        await music.play().catch(() => {});
-        loop();
       }
     </script>
   </body>
