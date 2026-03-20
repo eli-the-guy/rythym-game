@@ -87,7 +87,14 @@
         score = 0,
         combo = 0;
       const laneW = c.width / 4;
-      const keys = ["W", "A", "S", "D"];
+
+      // Fixed WASD mapping: W=Mid Left, A=Left, S=Mid Right, D=Right
+      const keyToLane = {
+        A: 0, // Left
+        W: 1, // Mid Left
+        S: 2, // Mid Right
+        D: 3, // Right
+      };
 
       async function unlock() {
         if (!audioCtx)
@@ -184,14 +191,13 @@
         requestAnimationFrame(loop);
       }
 
-      // WASD controls
+      // WASD controls using new mapping
       addEventListener("keydown", (e) => {
-        let l = keys.indexOf(e.key.toUpperCase());
-        if (l != -1) hit(l);
+        const l = keyToLane[e.key.toUpperCase()];
+        if (l !== undefined) hit(l);
       });
 
       // touch
-
       document.querySelectorAll(".touchBtn").forEach((btn) => {
         btn.addEventListener(
           "touchstart",
@@ -201,7 +207,6 @@
       });
 
       // FILE LOAD
-
       document.getElementById("fileBtn").onclick = async () => {
         await unlock();
         const input = document.createElement("input");
@@ -216,7 +221,7 @@
         input.click();
       };
 
-      // URL LOAD (FIXED)
+      // URL LOAD
       async function loadURL() {
         try {
           await unlock();
