@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AAA Rhythm Game v2</title>
+    <title>AAA Rhythm Game v3</title>
     <style>
       body {
         margin: 0;
@@ -18,10 +18,16 @@
         left: 0;
         width: 100%;
         height: 100%;
-        z-index: 0;
+        z-index: -1;
         pointer-events: none;
         filter: brightness(0.25);
         object-fit: cover;
+      }
+      #c {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
       }
       #menu {
         position: absolute;
@@ -117,6 +123,16 @@
         gap: 10px;
         font-size: 16px;
       }
+      .indicator {
+        position: absolute;
+        z-index: 3;
+        font-size: 32px;
+        font-weight: bold;
+        text-shadow: 0 0 15px #0ff;
+        pointer-events: none;
+        opacity: 1;
+        transition: all 0.5s ease;
+      }
     </style>
   </head>
   <body>
@@ -129,7 +145,7 @@
     ></iframe>
 
     <div id="menu">
-      <h2>AAA MODE v2</h2>
+      <h2>AAA MODE v3</h2>
       <button id="fileBtn">Upload Song</button><br />
       <input id="urlInput" placeholder="Audio / Drive link" /><br />
       <button onclick="loadURL()">Load URL</button>
@@ -190,6 +206,7 @@
         gameStarted = false,
         laneGlow = [0, 0, 0, 0];
       let startTime = 0;
+      let indicators = [];
 
       const laneW = c.width / 4;
       let SPEED = 500,
@@ -282,19 +299,22 @@
         }));
       }
 
-      // DRAW FUNCTION
       function draw() {
         ctx.clearRect(0, 0, innerWidth, innerHeight);
+
+        // draw lanes
         for (let i = 0; i < 4; i++) {
           ctx.fillStyle = laneGlow[i]
             ? "rgba(0,255,255,0.4)"
             : "rgba(80,80,150,0.3)";
           ctx.fillRect((i * innerWidth) / 4, 0, innerWidth / 4, innerHeight);
         }
+
+        // hit line
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, innerHeight - 120, innerWidth, 5);
 
-        // draw notes
+        // notes
         if (gameStarted) {
           let time = performance.now() / 1000 - startTime;
           notes.forEach((n) => {
@@ -309,6 +329,16 @@
             ctx.shadowBlur = 0;
           });
         }
+
+        // indicators
+        indicators.forEach((ind) => {
+          ind.y -= 1.5;
+          ind.opacity -= 0.02;
+          ctx.font = "32px Arial";
+          ctx.fillStyle = `rgba(0,255,255,${ind.opacity})`;
+          ctx.fillText(ind.text, ind.x, ind.y);
+        });
+        indicators = indicators.filter((i) => i.opacity > 0);
       }
 
       function update() {
@@ -322,9 +352,19 @@
           ) {
             n.hit = true;
             combo = 0;
+            addIndicator("Miss", n.lane);
           }
         });
         updateRank();
+      }
+
+      function addIndicator(text, lane) {
+        indicators.push({
+          text: text,
+          x: (lane * innerWidth) / 4 + 50,
+          y: innerHeight - 120,
+          opacity: 1,
+        });
       }
 
       function hit(l) {
@@ -342,17 +382,25 @@
         });
         if (!best) {
           combo = 0;
+          addIndicator("Miss", l);
           return;
         }
+
         if (bd <= PERF) {
           combo++;
           score += 100 * combo;
           best.hit = true;
+          addIndicator("Perfect", l);
         } else if (bd <= GOOD) {
           combo++;
           score += 70 * combo;
           best.hit = true;
-        } else combo = 0;
+          addIndicator("Good", l);
+        } else {
+          combo = 0;
+          addIndicator("Bad", l);
+        }
+
         scoreEl.innerText = score;
         comboEl.innerText = combo;
       }
