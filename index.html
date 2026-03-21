@@ -155,8 +155,14 @@
     <script>
       const c = document.getElementById("c"),
         ctx = c.getContext("2d");
-      c.width = innerWidth;
-      c.height = innerHeight;
+
+      // High-DPI canvas fix
+      const dpr = window.devicePixelRatio || 1;
+      c.width = innerWidth * dpr;
+      c.height = innerHeight * dpr;
+      c.style.width = innerWidth + "px";
+      c.style.height = innerHeight + "px";
+      ctx.scale(dpr, dpr);
 
       const music = document.getElementById("music");
       const overlay = document.getElementById("overlay");
@@ -168,7 +174,7 @@
         laneGlow = [0, 0, 0, 0];
       let startTime = 0;
 
-      const laneW = c.width / 4;
+      const laneW = c.width / dpr / 4;
       let SPEED = 500,
         PERF = parseFloat(document.getElementById("sensitivity").value),
         GOOD = 0.25;
@@ -240,7 +246,6 @@
           }
           let rms = Math.sqrt(sum / size);
           if (rms > 0.15) {
-            // slightly more sensitive
             let t = i / sr;
             if (t - lastTime > 0.2) {
               beats.push(t);
@@ -260,31 +265,30 @@
       }
 
       function draw() {
-        ctx.fillStyle = "rgba(0,0,0,0.3)";
-        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.clearRect(0, 0, innerWidth, innerHeight);
 
         // lanes
         for (let i = 0; i < 4; i++) {
           ctx.fillStyle = laneGlow[i]
             ? "rgba(0,255,255,0.4)"
             : "rgba(80,80,150,0.3)";
-          ctx.fillRect(i * laneW, 0, laneW, c.height);
+          ctx.fillRect(i * laneW, 0, laneW, innerHeight);
         }
 
         // hit line
         ctx.fillStyle = "#fff";
-        ctx.fillRect(0, c.height - 120, c.width, 5);
+        ctx.fillRect(0, innerHeight - 120, innerWidth, 5);
 
-        // notes (fully visible)
+        // notes (visible)
         if (gameStarted) {
           let time = performance.now() / 1000 - startTime;
           notes.forEach((n) => {
             if (n.hit) return;
-            let y = c.height - 120 - (n.time - time) * SPEED;
-            if (y + 20 < 0 || y > c.height) return;
-            ctx.fillStyle = `rgba(${60 + n.lane * 60},200,255,0.95)`;
+            let y = innerHeight - 120 - (n.time - time) * SPEED;
+            if (y + 20 < 0 || y > innerHeight) return;
+            ctx.fillStyle = "#0ff";
             ctx.shadowColor = "#0ff";
-            ctx.shadowBlur = 15;
+            ctx.shadowBlur = 20;
             ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 20);
             ctx.shadowBlur = 0;
           });
@@ -295,10 +299,10 @@
         notes.forEach((n) => {
           if (
             !n.hit &&
-            c.height -
+            innerHeight -
               120 -
               (n.time - (performance.now() / 1000 - startTime)) * SPEED >
-              c.height
+              innerHeight
           ) {
             n.hit = true;
             combo = 0;
