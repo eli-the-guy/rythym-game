@@ -96,11 +96,25 @@
         transition: 0.3s;
         z-index: 3;
       }
+
+      /* SENSITIVITY SLIDER */
+      #sensitivityWrapper {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 4;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+      }
     </style>
   </head>
 
   <body>
-    <!-- YOUTUBE LOOPING BACKGROUND -->
+    <!-- YOUTUBE LOOPING BACKGROUND (Muted) -->
     <iframe
       id="bgVideo"
       src="https://www.youtube.com/embed/0VKY7Moy4so?start=236&autoplay=1&loop=1&playlist=0VKY7Moy4so&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3"
@@ -132,6 +146,20 @@
       </div>
     </div>
 
+    <!-- SENSITIVITY SLIDER -->
+    <div id="sensitivityWrapper">
+      <label for="sensitivity">Sensitivity:</label>
+      <input
+        type="range"
+        id="sensitivity"
+        min="0.05"
+        max="0.5"
+        step="0.01"
+        value="0.12"
+      />
+      <span id="sensVal">0.12</span>
+    </div>
+
     <div class="touchBtn" style="left: 0" data-lane="0"></div>
     <div class="touchBtn" style="left: 25%" data-lane="1"></div>
     <div class="touchBtn" style="left: 50%" data-lane="2"></div>
@@ -154,9 +182,11 @@
       let score = 0,
         combo = 0,
         gameStarted = false;
+      let laneGlow = [0, 0, 0, 0];
+
       const laneW = c.width / 4;
       let SPEED = 500,
-        PERF = 0.12,
+        PERF = parseFloat(document.getElementById("sensitivity").value),
         GOOD = 0.25;
       const keys = {
         A: 0,
@@ -172,6 +202,16 @@
         O: 2,
         P: 3,
       };
+
+      const scoreEl = document.getElementById("score");
+      const comboEl = document.getElementById("combo");
+      const sensSlider = document.getElementById("sensitivity");
+      const sensVal = document.getElementById("sensVal");
+
+      sensSlider.addEventListener("input", () => {
+        PERF = parseFloat(sensSlider.value);
+        sensVal.innerText = PERF.toFixed(2);
+      });
 
       async function unlock() {
         if (!audioCtx) {
@@ -233,6 +273,14 @@
           }
         }
 
+        /* LANES */
+        for (let i = 0; i < 4; i++) {
+          ctx.fillStyle = laneGlow[i]
+            ? "rgba(0,255,255,0.4)"
+            : "rgba(80,80,150,0.3)";
+          ctx.fillRect(i * laneW, 0, laneW, c.height);
+        }
+
         /* NOTES */
         let time = gameStarted ? music.currentTime : 0;
         notes.forEach((n) => {
@@ -268,6 +316,8 @@
       }
 
       function hit(l) {
+        laneGlow[l] = 1;
+        setTimeout(() => (laneGlow[l] = 0), 100);
         let best = null,
           bd = 999;
         notes.forEach((n) => {
@@ -291,8 +341,8 @@
           score += 70 * combo;
           best.hit = true;
         } else combo = 0;
-        document.getElementById("score").innerText = score;
-        document.getElementById("combo").innerText = combo;
+        scoreEl.innerText = score;
+        comboEl.innerText = combo;
       }
 
       function loop() {
