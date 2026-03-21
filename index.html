@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MUGA FINAL</title>
+    <title>MUGA FINAL 🔥</title>
 
     <style>
       body {
@@ -136,14 +136,21 @@
       c.height = innerHeight;
 
       const music = document.getElementById("music");
+      const menu = document.getElementById("menu");
 
       const scoreEl = document.getElementById("score");
       const comboEl = document.getElementById("combo");
       const rankEl = document.getElementById("rank");
       const accEl = document.getElementById("acc");
 
+      const endScreen = document.getElementById("endScreen");
+      const finalScore = document.getElementById("finalScore");
+      const finalAcc = document.getElementById("finalAcc");
+      const finalRank = document.getElementById("finalRank");
+
       let notes = [],
-        particles = [];
+        particles = [],
+        hitTexts = [];
       let score = 0,
         combo = 0,
         hits = 0,
@@ -151,10 +158,9 @@
       let startTime = 0,
         gameStarted = false,
         songDuration = 0;
-
       let screenShake = 0,
-        comboGlow = 0;
-      let laneFlash = [0, 0, 0, 0];
+        comboGlow = 0,
+        laneFlash = [0, 0, 0, 0];
 
       const laneW = innerWidth / 4,
         SPEED = 500;
@@ -247,6 +253,16 @@
         input.click();
       };
 
+      // HIT TEXT
+      function addHitText(text, lane) {
+        hitTexts.push({
+          text,
+          x: lane * laneW + laneW / 2,
+          y: c.height - 180,
+          life: 1,
+        });
+      }
+
       // HIT
       function hit(l) {
         let time = performance.now() / 1000 - startTime;
@@ -265,6 +281,7 @@
         if (!best) {
           combo = 0;
           comboGlow = 0;
+          addHitText("MISS", l);
           return;
         }
 
@@ -277,6 +294,7 @@
           spawnParticles(l, 15);
           comboGlow = Math.min(comboGlow + 0.2, 1);
           screenShake = 8;
+          addHitText("PERFECT", l);
         } else if (bd < 0.2 * sensitivity) {
           score += 150;
           hits++;
@@ -284,9 +302,16 @@
           spawnParticles(l, 8);
           comboGlow = Math.min(comboGlow + 0.1, 1);
           screenShake = 4;
+          addHitText("EPIC", l);
+        } else if (bd < 0.3 * sensitivity) {
+          score += 50;
+          hits++;
+          combo++;
+          addHitText("MID", l);
         } else {
           combo = 0;
           comboGlow = 0;
+          addHitText("MISS", l);
         }
 
         best.hit = true;
@@ -312,16 +337,7 @@
 
       // CONTROLS (QWER + UIOP)
       addEventListener("keydown", (e) => {
-        const map = {
-          q: 0,
-          w: 1,
-          e: 2,
-          r: 3,
-          u: 0,
-          i: 1,
-          o: 2,
-          p: 3,
-        };
+        const map = { q: 0, w: 1, e: 2, r: 3, u: 0, i: 1, o: 2, p: 3 };
         let key = e.key.toLowerCase();
         if (map[key] !== undefined) hit(map[key]);
       });
@@ -402,6 +418,24 @@
           p.life -= 0.02;
         });
         particles = particles.filter((p) => p.life > 0);
+
+        // hit texts
+        hitTexts.forEach((ht) => {
+          ctx.globalAlpha = ht.life;
+          if (ht.text === "PERFECT") ctx.fillStyle = "#0ff";
+          else if (ht.text === "EPIC") ctx.fillStyle = "#0f0";
+          else if (ht.text === "MID") ctx.fillStyle = "#ff0";
+          else ctx.fillStyle = "#f00";
+
+          ctx.font = "20px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(ht.text, ht.x, ht.y);
+
+          ht.y -= 1.5;
+          ht.life -= 0.02;
+          ctx.globalAlpha = 1;
+        });
+        hitTexts = hitTexts.filter((ht) => ht.life > 0);
       }
 
       // UPDATE
@@ -412,6 +446,7 @@
           if (!n.hit && time - n.time > 0.4) {
             combo = 0;
             n.hit = true;
+            addHitText("MISS", n.lane);
           }
         });
 
