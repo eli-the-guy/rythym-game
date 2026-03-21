@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MUGA ULTRA</title>
+    <title>MUGA FINAL</title>
 
     <style>
       body {
@@ -90,18 +90,6 @@
         transition: 0.3s;
       }
 
-      #bgVideo {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        z-index: -2;
-        filter: brightness(0.3);
-        display: none;
-      }
-
       canvas {
         position: absolute;
         z-index: 1;
@@ -111,10 +99,9 @@
 
   <body>
     <div id="menu">
-      <h2>MUGA ULTRA 🔥</h2>
+      <h2>MUGA FINAL 🔥</h2>
       <button id="demoBtn">Play Demo</button>
       <button id="audioBtn">Load MP3</button>
-      <button id="videoBtn">Load Video</button>
 
       <div>
         <label>Sensitivity: <span id="sensVal">1</span></label>
@@ -139,7 +126,6 @@
       <button onclick="location.reload()">Restart</button>
     </div>
 
-    <video id="bgVideo" autoplay loop muted playsinline></video>
     <canvas id="c"></canvas>
     <audio id="music" playsinline></audio>
 
@@ -150,7 +136,11 @@
       c.height = innerHeight;
 
       const music = document.getElementById("music");
-      const bgVideo = document.getElementById("bgVideo");
+
+      const scoreEl = document.getElementById("score");
+      const comboEl = document.getElementById("combo");
+      const rankEl = document.getElementById("rank");
+      const accEl = document.getElementById("acc");
 
       let notes = [],
         particles = [];
@@ -164,6 +154,7 @@
 
       let screenShake = 0,
         comboGlow = 0;
+      let laneFlash = [0, 0, 0, 0];
 
       const laneW = innerWidth / 4,
         SPEED = 500;
@@ -175,7 +166,7 @@
         document.getElementById("sensVal").innerText = sensitivity;
       };
 
-      // MOBILE AUDIO UNLOCK
+      // MOBILE AUDIO
       let unlocked = false;
       function unlockAudio() {
         if (unlocked) return;
@@ -256,19 +247,6 @@
         input.click();
       };
 
-      // VIDEO
-      document.getElementById("videoBtn").onclick = () => {
-        let input = document.createElement("input");
-        input.type = "file";
-        input.accept = "video/*";
-        input.onchange = (e) => {
-          bgVideo.src = URL.createObjectURL(e.target.files[0]);
-          bgVideo.style.display = "block";
-          bgVideo.play();
-        };
-        input.click();
-      };
-
       // HIT
       function hit(l) {
         let time = performance.now() / 1000 - startTime;
@@ -289,6 +267,8 @@
           comboGlow = 0;
           return;
         }
+
+        laneFlash[l] = 1;
 
         if (bd < 0.12 * sensitivity) {
           score += 300;
@@ -330,6 +310,22 @@
         }
       }
 
+      // CONTROLS (QWER + UIOP)
+      addEventListener("keydown", (e) => {
+        const map = {
+          q: 0,
+          w: 1,
+          e: 2,
+          r: 3,
+          u: 0,
+          i: 1,
+          o: 2,
+          p: 3,
+        };
+        let key = e.key.toLowerCase();
+        if (map[key] !== undefined) hit(map[key]);
+      });
+
       // TOUCH
       c.addEventListener(
         "touchstart",
@@ -339,12 +335,6 @@
         },
         { passive: false },
       );
-
-      // KEYS
-      addEventListener("keydown", (e) => {
-        let map = { a: 0, s: 1, d: 2, f: 3 };
-        if (map[e.key] != null) hit(map[e.key]);
-      });
 
       // DRAW
       function draw() {
@@ -358,34 +348,52 @@
         screenShake *= 0.9;
         comboGlow *= 0.95;
 
-        if (bgVideo.style.display !== "block") {
-          let t = performance.now() * 0.002;
-          ctx.fillStyle = `hsl(${(t * 40) % 360},50%,8%)`;
-          ctx.fillRect(0, 0, c.width, c.height);
-        }
+        // background
+        ctx.fillStyle = "#05070d";
+        ctx.fillRect(0, 0, c.width, c.height);
 
+        let t = performance.now() * 0.002;
+        let grad = ctx.createLinearGradient(0, 0, 0, c.height);
+        grad.addColorStop(0, `hsl(${(t * 40) % 360},70%,10%)`);
+        grad.addColorStop(1, `hsl(${(t * 40 + 60) % 360},70%,5%)`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, c.width, c.height);
+
+        // lanes
         for (let i = 0; i < 4; i++) {
-          let g = comboGlow;
+          laneFlash[i] *= 0.9;
 
-          ctx.fillStyle = `rgba(0,200,255,${0.08 + g * 0.15})`;
+          ctx.fillStyle = `rgba(0,200,255,${0.08 + comboGlow * 0.15 + laneFlash[i] * 0.3})`;
           ctx.fillRect(i * laneW, 0, laneW, c.height);
-
-          ctx.strokeStyle = `rgba(0,255,255,${0.2 + g * 0.6})`;
-          ctx.lineWidth = 2 + g * 4;
-          ctx.strokeRect(i * laneW, 0, laneW, c.height);
 
           ctx.fillStyle = "rgba(0,255,255,0.25)";
           ctx.fillRect(i * laneW, c.height - 140, laneW, 120);
         }
 
+        // perfect line glow
+        ctx.shadowColor = "#0ff";
+        ctx.shadowBlur = 20 * (1 + comboGlow);
+        ctx.fillStyle = "#0ff";
+        ctx.fillRect(0, c.height - 140, c.width, 4);
+        ctx.shadowBlur = 0;
+
+        // notes
         let time = performance.now() / 1000 - startTime;
         notes.forEach((n) => {
           if (n.hit) return;
+
           let y = c.height - 140 - (n.time - time) * SPEED;
+
+          ctx.shadowColor = `hsl(${n.lane * 90},100%,70%)`;
+          ctx.shadowBlur = 20;
+
           ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
           ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 50);
+
+          ctx.shadowBlur = 0;
         });
 
+        // particles
         particles.forEach((p) => {
           ctx.fillStyle = "#0ff";
           ctx.fillRect(p.x, p.y, 4, 4);
