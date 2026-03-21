@@ -2,105 +2,105 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, user-scalable=no"
-    />
-    <title>ONLINE Rhythm Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FINAL BOSS Rhythm Game</title>
+
     <style>
-      html,
       body {
-        width: 100%;
-        height: 100%;
         margin: 0;
-        overflow: hidden;
-        touch-action: none;
         background: black;
-        font-family: Arial;
         color: white;
+        font-family: Arial;
+        overflow: hidden;
       }
       canvas {
         display: block;
-        width: 100%;
-        height: 100%;
       }
+
       #menu {
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
         text-align: center;
+        z-index: 20;
       }
-      button {
-        padding: 12px 20px;
-        margin: 6px;
-        font-size: 16px;
-      }
+
       #ui {
         position: absolute;
         top: 10px;
         left: 10px;
+        z-index: 15;
       }
-      #combo {
-        font-size: 24px;
-        color: #0ff;
-      }
+
       .touchBtn {
         position: absolute;
         bottom: 0;
-        width: 24%;
+        width: 25%;
         height: 35vh;
         background: rgba(0, 255, 255, 0.2);
         border: 1px solid #0ff;
+        z-index: 5;
       }
-      #tapOverlay {
+
+      #overlay {
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.85);
-        color: white;
-        font-size: 28px;
         display: flex;
         justify-content: center;
         align-items: center;
-        text-align: center;
-        cursor: pointer;
-        z-index: 1000;
+        font-size: 40px;
+        background: rgba(0, 0, 0, 0.9);
+        opacity: 0;
+        pointer-events: none;
+        transition: 0.3s;
+        z-index: 50;
+      }
+
+      #hitText {
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 40px;
+        opacity: 0;
+        z-index: 30;
+        transition: 0.2s;
       }
     </style>
   </head>
+
   <body>
     <div id="menu">
-      <h2>ONLINE MODE</h2>
-      <button id="fileBtn">📁 Upload Song</button><br />
-      <input
-        id="urlInput"
-        placeholder="Paste direct audio or Google Drive link"
-        style="width: 260px; padding: 8px"
-      /><br />
-      <button onclick="loadURL()">🌐 Load URL</button><br />
-      <button id="easyBtn">🎵 Easy Mode</button><br /><br />
+      <h2>FINAL BOSS MODE</h2>
+      <button id="fileBtn">Upload Song</button><br />
+      <input id="urlInput" placeholder="Audio / Drive link" /><br />
+      <button onclick="loadURL()">Load URL</button><br />
+      <button id="easyBtn">Easy Mode</button><br />
 
-      <label for="sensitivitySlider">Beat Sensitivity:</label><br />
+      <label>Sensitivity</label><br />
       <input
         type="range"
-        id="sensitivitySlider"
+        id="sens"
         min="0.05"
         max="0.5"
         step="0.01"
         value="0.15"
-        style="width: 200px"
       /><br />
-      <span id="sensitivityValue">0.15</span>
+      <span id="sensVal">0.15</span>
     </div>
 
-    <div id="tapOverlay">Tap to Start Music</div>
+    <div id="overlay"></div>
+    <div id="hitText"></div>
 
     <div id="ui">
       Score: <span id="score">0</span><br />
-      <div id="combo">Combo: 0</div>
+      Combo: <span id="combo">0</span><br />
+      Accuracy: <span id="acc">100%</span><br />
+      P:<span id="p">0</span> G:<span id="g">0</span> M:<span id="m">0</span>
     </div>
 
     <div class="touchBtn" style="left: 0" data-lane="0"></div>
@@ -109,25 +109,34 @@
     <div class="touchBtn" style="left: 75%" data-lane="3"></div>
 
     <canvas id="c"></canvas>
-    <audio id="music" playsinline controls crossorigin="anonymous"></audio>
+    <audio id="music" playsinline></audio>
 
     <script>
       const c = document.getElementById("c"),
         ctx = c.getContext("2d");
       c.width = innerWidth;
       c.height = innerHeight;
+
       const music = document.getElementById("music");
-      const menu = document.getElementById("menu");
-      const tapOverlay = document.getElementById("tapOverlay");
+      const overlay = document.getElementById("overlay");
+      const hitText = document.getElementById("hitText");
 
       let audioCtx;
       let notes = [],
-        score = 0,
+        particles = [];
+      let score = 0,
         combo = 0;
-      const laneW = c.width / 4;
+      let pC = 0,
+        gC = 0,
+        mC = 0;
+      let laneGlow = [0, 0, 0, 0];
 
-      // Keyboard mappings: WASD, QWER, UIOP
-      const keyToLane = {
+      const laneW = c.width / 4;
+      let SPEED = 500,
+        PERF = 0.12,
+        GOOD = 0.25;
+
+      const keys = {
         A: 0,
         W: 1,
         S: 2,
@@ -142,65 +151,82 @@
         P: 3,
       };
 
-      // Timing and speed
-      let NOTE_SPEED = 500;
-      let PERFECT = 0.12;
-      let GOOD = 0.25;
-
-      const EASY_SPEED = 300;
-      const EASY_PERFECT = 0.18;
-      const EASY_GOOD = 0.35;
-
-      // Easy Mode button
-      document.getElementById("easyBtn").onclick = () => {
-        NOTE_SPEED = EASY_SPEED;
-        PERFECT = EASY_PERFECT;
-        GOOD = EASY_GOOD;
-        alert("Easy Mode Activated! Notes are slower and more forgiving.");
+      document.getElementById("sens").oninput = (e) => {
+        sensVal.innerText = e.target.value;
       };
 
-      // Sensitivity slider display
-      const slider = document.getElementById("sensitivitySlider");
-      const sliderValue = document.getElementById("sensitivityValue");
-      slider.addEventListener("input", () => {
-        sliderValue.innerText = slider.value;
-      });
+      document.getElementById("easyBtn").onclick = () => {
+        SPEED = 300;
+        PERF = 0.18;
+        GOOD = 0.35;
+      };
 
-      // Unlock audio context function
       async function unlock() {
         if (!audioCtx)
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === "suspended") await audioCtx.resume();
       }
 
-      // Show overlay and wait for tap to start music
-      function showTapOverlay() {
-        tapOverlay.style.display = "flex";
-        tapOverlay.onclick = async () => {
-          await unlock();
-          tapOverlay.style.display = "none";
-          music.play().catch(() => {});
-        };
+      function showOverlay(t) {
+        overlay.innerText = t;
+        overlay.style.opacity = 1;
+        overlay.style.pointerEvents = "auto";
       }
 
-      // Analyze audio buffer to generate beats
-      async function analyze(buffer) {
-        const threshold = parseFloat(
-          document.getElementById("sensitivitySlider").value,
-        );
-        const audio = await audioCtx.decodeAudioData(buffer.slice(0));
-        const data = audio.getChannelData(0);
-        const sr = audio.sampleRate;
-        let beats = [],
-          size = 2048;
+      function hideOverlay() {
+        overlay.style.opacity = 0;
+        overlay.style.pointerEvents = "none";
+      }
 
-        for (let i = 0; i < data.length; i += size) {
+      async function countdown() {
+        for (let t of ["Ready", "3", "2", "1", "GO"]) {
+          showOverlay(t);
+          await new Promise((r) => setTimeout(r, 600));
+        }
+        hideOverlay();
+      }
+
+      function showHit(t, c) {
+        hitText.innerText = t;
+        hitText.style.color = c;
+        hitText.style.opacity = 1;
+        setTimeout(() => (hitText.style.opacity = 0), 200);
+      }
+
+      function spawnParticles(x, y, col) {
+        for (let i = 0; i < 10; i++) {
+          particles.push({
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 6,
+            vy: (Math.random() - 0.5) * 6,
+            life: 20,
+            color: col,
+          });
+        }
+      }
+
+      function updateAcc() {
+        let tot = pC + gC + mC;
+        if (!tot) return;
+        let acc = ((pC + gC * 0.7) / tot) * 100;
+        document.getElementById("acc").innerText = acc.toFixed(1) + "%";
+      }
+
+      async function analyze(buf) {
+        const th = parseFloat(sens.value);
+        const a = await audioCtx.decodeAudioData(buf.slice(0));
+        const d = a.getChannelData(0);
+        let beats = [],
+          sr = a.sampleRate;
+
+        for (let i = 0; i < d.length; i += 2048) {
           let sum = 0;
-          for (let j = 0; j < size; j++) {
-            let v = data[i + j] || 0;
+          for (let j = 0; j < 2048; j++) {
+            let v = d[i + j] || 0;
             sum += v * v;
           }
-          if (Math.sqrt(sum / size) > threshold) beats.push(i / sr);
+          if (Math.sqrt(sum / 2048) > th) beats.push(i / sr);
         }
 
         let out = [],
@@ -225,36 +251,55 @@
       function draw() {
         ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.fillRect(0, 0, c.width, c.height);
+
         for (let i = 0; i < 4; i++) {
-          ctx.fillStyle = "rgba(80,80,150,0.3)";
+          ctx.fillStyle = laneGlow[i]
+            ? "rgba(0,255,255,0.4)"
+            : "rgba(80,80,150,0.3)";
           ctx.fillRect(i * laneW, 0, laneW, c.height);
         }
+
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, c.height - 120, c.width, 5);
+
         notes.forEach((n) => {
           if (n.hit) return;
-          let y = c.height - 120 - (n.time - music.currentTime) * NOTE_SPEED;
+          let y = c.height - 120 - (n.time - music.currentTime) * SPEED;
           ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
           ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 20);
         });
+
+        particles.forEach((p) => {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x, p.y, 4, 4);
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life--;
+        });
+        particles = particles.filter((p) => p.life > 0);
       }
 
       function update() {
         notes.forEach((n) => {
           if (
             !n.hit &&
-            c.height - 120 - (n.time - music.currentTime) * NOTE_SPEED >
-              c.height
+            c.height - 120 - (n.time - music.currentTime) * SPEED > c.height
           ) {
             n.hit = true;
             combo = 0;
+            mC++;
+            updateAcc();
           }
         });
       }
 
       function hit(l) {
+        laneGlow[l] = 1;
+        setTimeout(() => (laneGlow[l] = 0), 100);
+
         let best = null,
           bd = 999;
+
         notes.forEach((n) => {
           if (n.hit || n.lane !== l) return;
           let d = Math.abs(n.time - music.currentTime);
@@ -263,22 +308,45 @@
             best = n;
           }
         });
-        if (!best) return;
 
-        if (bd <= PERFECT) {
+        if (!best) {
+          combo = 0;
+          mC++;
+          showHit("MISS", "red");
+          updateAcc();
+          return;
+        }
+
+        let x = l * laneW + laneW / 2,
+          y = c.height - 120;
+
+        if (bd <= PERF) {
           combo++;
           score += 100 * combo;
+          pC++;
           best.hit = true;
+          showHit("PERFECT", "#0ff");
+          spawnParticles(x, y, "#0ff");
         } else if (bd <= GOOD) {
           combo++;
           score += 70 * combo;
+          gC++;
           best.hit = true;
+          showHit("GOOD", "#0f8");
+          spawnParticles(x, y, "#0f8");
         } else {
           combo = 0;
+          mC++;
+          showHit("MISS", "red");
         }
 
-        document.getElementById("score").innerText = score;
-        document.getElementById("combo").innerText = "Combo: " + combo;
+        updateAcc();
+
+        scoreEl.innerText = score;
+        comboEl.innerText = combo;
+        p.innerText = pC;
+        g.innerText = gC;
+        m.innerText = mC;
       }
 
       function loop() {
@@ -287,75 +355,64 @@
         requestAnimationFrame(loop);
       }
 
-      // Keyboard controls
       addEventListener("keydown", (e) => {
-        const l = keyToLane[e.key.toUpperCase()];
-        if (l !== undefined) hit(l);
+        let l = keys[e.key.toUpperCase()];
+        if (l != null) hit(l);
       });
 
-      // Touch controls
-      document.querySelectorAll(".touchBtn").forEach((btn) => {
-        btn.addEventListener(
+      document.querySelectorAll(".touchBtn").forEach((b) => {
+        b.addEventListener(
           "touchstart",
           (e) => {
             e.preventDefault();
-            hit(parseInt(btn.dataset.lane));
+            hit(parseInt(b.dataset.lane));
           },
           { passive: false },
         );
       });
 
-      // File upload
-      document.getElementById("fileBtn").onclick = async () => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = "audio/mpeg,audio/wav,audio/mp4,audio/*";
-        input.onchange = async (e) => {
-          const file = e.target.files[0];
-          if (!file) return alert("No file selected");
+      async function start(buf, src) {
+        await unlock();
+        spawn(await analyze(buf));
+        music.src = src;
 
-          const url = URL.createObjectURL(file);
-          music.src = url;
+        menu.style.display = "none";
+        loop();
 
-          const buf = await file.arrayBuffer();
-          const beats = await analyze(buf);
-          spawn(beats);
+        let p = music.play();
 
-          menu.style.display = "none";
-          loop();
-          showTapOverlay();
+        if (p) {
+          p.then(async () => await countdown()).catch(() => {
+            showOverlay("Tap to Start");
+            overlay.onclick = async () => {
+              await music.play();
+              await countdown();
+            };
+          });
+        }
+      }
+
+      fileBtn.onclick = () => {
+        let i = document.createElement("input");
+        i.type = "file";
+        i.accept = "audio/*";
+        i.onchange = async (e) => {
+          let f = e.target.files[0];
+          start(await f.arrayBuffer(), URL.createObjectURL(f));
         };
-        input.click();
+        i.click();
       };
 
-      // URL Load with Google Drive support
       async function loadURL() {
         try {
-          let url = document.getElementById("urlInput").value.trim();
-          if (!url) return alert("Paste a valid audio URL");
+          let u = urlInput.value.trim();
+          let m = u.match(/\/d\/([a-zA-Z0-9_-]+)/);
+          if (m) u = `https://drive.google.com/uc?export=download&id=${m[1]}`;
 
-          const driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-          if (driveMatch) {
-            const fileId = driveMatch[1];
-            url = `https://drive.google.com/uc?export=download&id=${fileId}`;
-          }
-
-          const res = await fetch(url, { mode: "cors" });
-          if (!res.ok) throw new Error("Fetch failed");
-
-          const buf = await res.arrayBuffer();
-          const beats = await analyze(buf);
-          spawn(beats);
-
-          music.src = url;
-          menu.style.display = "none";
-          loop();
-          showTapOverlay();
-        } catch (err) {
-          alert(
-            "URL failed. Use direct .mp3/.wav link, Google Drive link, or upload file.",
-          );
-          console.error(err);
+          let r = await fetch(u);
+          start(await r.arrayBuffer(), u);
+        } catch {
+          alert("URL failed");
         }
       }
     </script>
