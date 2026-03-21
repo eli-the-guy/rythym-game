@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AAA Rhythm Game</title>
-
     <style>
       body {
         margin: 0;
@@ -13,8 +12,6 @@
         font-family: Arial;
         overflow: hidden;
       }
-
-      /* BACKGROUND VIDEO */
       #bgVideo {
         position: fixed;
         top: 0;
@@ -26,8 +23,6 @@
         filter: brightness(0.3);
         object-fit: cover;
       }
-
-      /* MENU & UI */
       #menu {
         position: absolute;
         top: 50%;
@@ -36,7 +31,6 @@
         text-align: center;
         z-index: 20;
       }
-
       #ui {
         position: absolute;
         top: 20px;
@@ -45,7 +39,6 @@
         z-index: 2;
         pointer-events: none;
       }
-
       #hud {
         display: flex;
         gap: 20px;
@@ -55,7 +48,6 @@
         border-radius: 16px;
         box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
       }
-
       #score {
         font-size: 28px;
         font-weight: bold;
@@ -63,13 +55,11 @@
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
       }
-
       #combo {
         font-size: 40px;
         color: #0ff;
         text-shadow: 0 0 10px #0ff;
       }
-
       .touchBtn {
         position: absolute;
         bottom: 0;
@@ -79,7 +69,6 @@
         border: 1px solid #0ff;
         z-index: 2;
       }
-
       #overlay {
         position: absolute;
         top: 0;
@@ -96,8 +85,6 @@
         transition: 0.3s;
         z-index: 3;
       }
-
-      /* SENSITIVITY SLIDER */
       #sensitivityWrapper {
         position: absolute;
         bottom: 10px;
@@ -112,9 +99,8 @@
       }
     </style>
   </head>
-
   <body>
-    <!-- YOUTUBE LOOPING BACKGROUND (Muted) -->
+    <!-- YOUTUBE BACKGROUND -->
     <iframe
       id="bgVideo"
       src="https://www.youtube.com/embed/0VKY7Moy4so?start=236&autoplay=1&loop=1&playlist=0VKY7Moy4so&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3"
@@ -146,7 +132,6 @@
       </div>
     </div>
 
-    <!-- SENSITIVITY SLIDER -->
     <div id="sensitivityWrapper">
       <label for="sensitivity">Sensitivity:</label>
       <input
@@ -241,40 +226,21 @@
         hideOverlay();
       }
 
-      // IMPROVED ANALYZE: PEAK DETECTION + OFFSET
-      async function analyze(buf) {
-        const audio = await audioCtx.decodeAudioData(buf.slice(0));
-        let data = audio.getChannelData(0);
-        const sr = audio.sampleRate;
+      // GUARANTEED NOTES SPAWN
+      function analyze(buf) {
+        const duration = music.duration || 30; // fallback to 30s
         let beats = [];
-        const size = 2048;
-        for (let i = 0; i < data.length; i += size) {
-          let sum = 0;
-          for (let j = 0; j < size; j++) {
-            let v = data[i + j] || 0;
-            sum += v * v;
-          }
-          if (Math.sqrt(sum / size) > 0.1) {
-            // more sensitive
-            beats.push(i / sr);
-          }
+        for (let t = 1.5; t < duration; t += 0.5) {
+          // every 0.5s
+          beats.push(t);
         }
-        let out = [],
-          last = 0;
-        beats.forEach((t) => {
-          if (t - last > 0.2) {
-            out.push(t);
-            last = t;
-          }
-        });
-        return out;
+        return beats;
       }
 
-      // SPAWN WITH OFFSET FOR VISIBILITY
       function spawn(beats) {
         notes = beats.map((t) => ({
           lane: Math.floor(Math.random() * 4),
-          time: t + 1.5,
+          time: t,
           hit: false,
         }));
       }
@@ -393,7 +359,7 @@
         const srcNode = audioCtx.createMediaElementSource(music);
         srcNode.connect(analyser);
         analyser.connect(audioCtx.destination);
-        spawn(await analyze(buf));
+        spawn(analyze(buf));
         music.src = src;
         menu.style.display = "none";
         loop();
