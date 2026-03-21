@@ -443,16 +443,16 @@
         ctx.fillRect(0, c.height - 140, c.width, 4);
         ctx.shadowBlur = 0;
 
-        // NOTES
+        // NOTES (SHORTER & SPACED)
         let currentTime = performance.now() / 1000 - startTime;
         notes.forEach((n) => {
           if (n.hit) return;
           let y = c.height - 140 - (n.time - currentTime) * SPEED;
-          if (y + 80 < 0) return; // skip offscreen notes
+          if (y + 60 < 0) return; // height 60
           ctx.shadowColor = goldMode ? "#fff" : `hsl(${n.lane * 90},100%,70%)`;
           ctx.shadowBlur = goldMode ? 50 : 20 * (1 + comboGlow);
           ctx.fillStyle = goldMode ? "gold" : `hsl(${n.lane * 90},100%,60%)`;
-          ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 80);
+          ctx.fillRect(n.lane * laneW + 20, y, laneW - 50, 60); // wider spacing
           ctx.shadowBlur = 0;
         });
 
