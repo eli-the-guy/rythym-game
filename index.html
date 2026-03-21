@@ -100,6 +100,7 @@
     </style>
   </head>
   <body>
+    <!-- YouTube background -->
     <iframe
       id="bgVideo"
       src="https://www.youtube.com/embed/0VKY7Moy4so?start=236&autoplay=1&loop=1&playlist=0VKY7Moy4so&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3"
@@ -155,14 +156,8 @@
     <script>
       const c = document.getElementById("c"),
         ctx = c.getContext("2d");
-
-      // High-DPI canvas fix
-      const dpr = window.devicePixelRatio || 1;
-      c.width = innerWidth * dpr;
-      c.height = innerHeight * dpr;
-      c.style.width = innerWidth + "px";
-      c.style.height = innerHeight + "px";
-      ctx.scale(dpr, dpr);
+      c.width = innerWidth;
+      c.height = innerHeight;
 
       const music = document.getElementById("music");
       const overlay = document.getElementById("overlay");
@@ -174,7 +169,7 @@
         laneGlow = [0, 0, 0, 0];
       let startTime = 0;
 
-      const laneW = c.width / dpr / 4;
+      const laneW = c.width / 4;
       let SPEED = 500,
         PERF = parseFloat(document.getElementById("sensitivity").value),
         GOOD = 0.25;
@@ -246,6 +241,7 @@
           }
           let rms = Math.sqrt(sum / size);
           if (rms > 0.15) {
+            // slightly more sensitive
             let t = i / sr;
             if (t - lastTime > 0.2) {
               beats.push(t);
@@ -264,6 +260,7 @@
         }));
       }
 
+      // DRAW FUNCTION FIXED
       function draw() {
         ctx.clearRect(0, 0, innerWidth, innerHeight);
 
@@ -272,24 +269,27 @@
           ctx.fillStyle = laneGlow[i]
             ? "rgba(0,255,255,0.4)"
             : "rgba(80,80,150,0.3)";
-          ctx.fillRect(i * laneW, 0, laneW, innerHeight);
+          ctx.fillRect((i * innerWidth) / 4, 0, innerWidth / 4, innerHeight);
         }
 
         // hit line
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, innerHeight - 120, innerWidth, 5);
 
-        // notes (visible)
+        // draw notes (fully visible)
         if (gameStarted) {
           let time = performance.now() / 1000 - startTime;
           notes.forEach((n) => {
             if (n.hit) return;
             let y = innerHeight - 120 - (n.time - time) * SPEED;
             if (y + 20 < 0 || y > innerHeight) return;
-            ctx.fillStyle = "#0ff";
+            let x = (n.lane * innerWidth) / 4 + 20;
+            let w = innerWidth / 4 - 40;
+            let h = 20;
+            ctx.fillStyle = "#0ff"; // solid cyan
             ctx.shadowColor = "#0ff";
             ctx.shadowBlur = 20;
-            ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 20);
+            ctx.fillRect(x, y, w, h);
             ctx.shadowBlur = 0;
           });
         }
