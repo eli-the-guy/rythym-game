@@ -168,6 +168,7 @@
         combo = 0,
         gameStarted = false;
       let laneGlow = [0, 0, 0, 0];
+      let startTime = 0;
 
       const laneW = c.width / 4;
       let SPEED = 500,
@@ -224,9 +225,11 @@
           await new Promise((r) => setTimeout(r, 600));
         }
         hideOverlay();
+        startTime = performance.now() / 1000;
+        gameStarted = true;
       }
 
-      // GUARANTEED NOTES SPAWN
+      // TEST: guaranteed notes every 0.5s
       function analyze(buf) {
         const duration = music.duration || 30;
         let beats = [];
@@ -248,19 +251,7 @@
         ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.fillRect(0, 0, c.width, c.height);
 
-        /* VISUALIZER */
-        if (analyser && gameStarted) {
-          analyser.getByteFrequencyData(dataArray);
-          for (let i = 0; i < dataArray.length; i++) {
-            let val = dataArray[i];
-            let x = (i / dataArray.length) * c.width;
-            let h = val * 1.2;
-            ctx.fillStyle = `hsl(${val * 2},100%,50%)`;
-            ctx.fillRect(x, c.height - h, 4, h);
-          }
-        }
-
-        /* LANES */
+        // lanes
         for (let i = 0; i < 4; i++) {
           ctx.fillStyle = laneGlow[i]
             ? "rgba(0,255,255,0.4)"
@@ -268,40 +259,31 @@
           ctx.fillRect(i * laneW, 0, laneW, c.height);
         }
 
-        /* HIT LINE */
+        // hit line
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, c.height - 120, c.width, 5);
 
-        // draw notes
+        // draw notes using game clock
         if (gameStarted) {
-          let time = music.currentTime;
+          let time = performance.now() / 1000 - startTime;
           notes.forEach((n) => {
             if (n.hit) return;
             let y = c.height - 120 - (n.time - time) * SPEED;
-            if (y + 20 < 0) return; // skip if still above screen
+            if (y + 20 < 0) return;
             ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
             ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 20);
           });
         }
-
-        /* PARTICLES */
-        particles.forEach((p) => {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-          ctx.fillStyle = p.color;
-          ctx.fill();
-          p.x += p.vx;
-          p.y += p.vy;
-          p.life--;
-        });
-        particles = particles.filter((p) => p.life > 0);
       }
 
       function update() {
         notes.forEach((n) => {
           if (
             !n.hit &&
-            c.height - 120 - (n.time - music.currentTime) * SPEED > c.height
+            c.height -
+              120 -
+              (n.time - (performance.now() / 1000 - startTime)) * SPEED >
+              c.height
           ) {
             n.hit = true;
             combo = 0;
@@ -316,7 +298,7 @@
           bd = 999;
         notes.forEach((n) => {
           if (n.hit || n.lane !== l) return;
-          let d = Math.abs(n.time - music.currentTime);
+          let d = Math.abs(n.time - (performance.now() / 1000 - startTime));
           if (d < bd) {
             bd = d;
             best = n;
@@ -373,13 +355,11 @@
         if (p) {
           p.then(async () => {
             await countdown();
-            gameStarted = true;
           }).catch(() => {
             showOverlay("Tap to Start");
             overlay.onclick = async () => {
               await music.play();
               await countdown();
-              gameStarted = true;
             };
           });
         }
