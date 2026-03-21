@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AAA Rhythm Game with Beat Detection</title>
+    <title>AAA Rhythm Game</title>
     <style>
       body {
         margin: 0;
@@ -100,7 +100,6 @@
     </style>
   </head>
   <body>
-    <!-- YouTube background -->
     <iframe
       id="bgVideo"
       src="https://www.youtube.com/embed/0VKY7Moy4so?start=236&autoplay=1&loop=1&playlist=0VKY7Moy4so&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3"
@@ -240,7 +239,8 @@
             sum += Math.pow(data[i + j] || 0, 2);
           }
           let rms = Math.sqrt(sum / size);
-          if (rms > 0.2) {
+          if (rms > 0.15) {
+            // slightly more sensitive
             let t = i / sr;
             if (t - lastTime > 0.2) {
               beats.push(t);
@@ -275,15 +275,18 @@
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, c.height - 120, c.width, 5);
 
-        // notes
+        // notes (fully visible)
         if (gameStarted) {
           let time = performance.now() / 1000 - startTime;
           notes.forEach((n) => {
             if (n.hit) return;
             let y = c.height - 120 - (n.time - time) * SPEED;
-            if (y + 20 < 0) return;
-            ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
+            if (y + 20 < 0 || y > c.height) return;
+            ctx.fillStyle = `rgba(${60 + n.lane * 60},200,255,0.95)`;
+            ctx.shadowColor = "#0ff";
+            ctx.shadowBlur = 15;
             ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 20);
+            ctx.shadowBlur = 0;
           });
         }
       }
