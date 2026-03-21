@@ -241,18 +241,40 @@
         hideOverlay();
       }
 
+      // IMPROVED ANALYZE: PEAK DETECTION + OFFSET
       async function analyze(buf) {
-        const a = await audioCtx.decodeAudioData(buf.slice(0));
-        let interval = 60 / 120;
-        let out = [];
-        for (let t = 0; t < a.duration; t += interval) out.push(t);
+        const audio = await audioCtx.decodeAudioData(buf.slice(0));
+        let data = audio.getChannelData(0);
+        const sr = audio.sampleRate;
+        let beats = [];
+        const size = 2048;
+        for (let i = 0; i < data.length; i += size) {
+          let sum = 0;
+          for (let j = 0; j < size; j++) {
+            let v = data[i + j] || 0;
+            sum += v * v;
+          }
+          if (Math.sqrt(sum / size) > 0.1) {
+            // more sensitive
+            beats.push(i / sr);
+          }
+        }
+        let out = [],
+          last = 0;
+        beats.forEach((t) => {
+          if (t - last > 0.2) {
+            out.push(t);
+            last = t;
+          }
+        });
         return out;
       }
 
-      function spawn(b) {
-        notes = b.map((t) => ({
+      // SPAWN WITH OFFSET FOR VISIBILITY
+      function spawn(beats) {
+        notes = beats.map((t) => ({
           lane: Math.floor(Math.random() * 4),
-          time: t,
+          time: t + 1.5,
           hit: false,
         }));
       }
@@ -261,7 +283,7 @@
         ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.fillRect(0, 0, c.width, c.height);
 
-        /* VISUALIZER ONLY WHEN PLAYING */
+        /* VISUALIZER */
         if (analyser && gameStarted) {
           analyser.getByteFrequencyData(dataArray);
           for (let i = 0; i < dataArray.length; i++) {
