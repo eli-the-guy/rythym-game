@@ -164,7 +164,7 @@
         comboGlow = 0,
         laneFlash = [0, 0, 0, 0];
       let laneW = c.width / 4;
-      const SPEED = 500;
+      const SPEED = 350; // adjusted for visible notes
       let sensitivity = 1;
       let goldMode = false;
 
@@ -199,7 +199,7 @@
         input.click();
       };
 
-      // DEMO SONG (placeholder notes, real track can be added later)
+      // DEMO SONG
       document.getElementById("demoBtn").onclick = () => {
         menu.style.display = "none";
         notes = [];
@@ -428,14 +428,15 @@
         ctx.shadowBlur = 0;
 
         // NOTES
-        let time = performance.now() / 1000 - startTime;
+        let currentTime = performance.now() / 1000 - startTime;
         notes.forEach((n) => {
           if (n.hit) return;
-          let y = c.height - 140 - (n.time - time) * SPEED;
+          let y = c.height - 140 - (n.time - currentTime) * SPEED;
+          if (y + 80 < 0) return; // skip offscreen notes
           ctx.shadowColor = goldMode ? "#fff" : `hsl(${n.lane * 90},100%,70%)`;
           ctx.shadowBlur = goldMode ? 50 : 20 * (1 + comboGlow);
           ctx.fillStyle = goldMode ? "gold" : `hsl(${n.lane * 90},100%,60%)`;
-          ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 50);
+          ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 80);
           ctx.shadowBlur = 0;
         });
 
