@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AAA Rhythm Game</title>
+    <title>AAA Rhythm Game v2</title>
     <style>
       body {
         margin: 0;
-        background: black;
+        background: #0a0a0a;
         color: white;
         font-family: Arial;
         overflow: hidden;
@@ -20,7 +20,7 @@
         height: 100%;
         z-index: 0;
         pointer-events: none;
-        filter: brightness(0.3);
+        filter: brightness(0.25);
         object-fit: cover;
       }
       #menu {
@@ -30,6 +30,15 @@
         transform: translate(-50%, -50%);
         text-align: center;
         z-index: 20;
+      }
+      #menu button,
+      input {
+        padding: 12px 20px;
+        margin: 6px;
+        font-size: 16px;
+        border-radius: 10px;
+        border: none;
+        outline: none;
       }
       #ui {
         position: absolute;
@@ -41,16 +50,20 @@
       }
       #hud {
         display: flex;
-        gap: 20px;
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(12px);
-        padding: 12px 20px;
-        border-radius: 16px;
-        box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        gap: 30px;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(15px);
+        padding: 15px 25px;
+        border-radius: 20px;
+        box-shadow: 0 0 20px #0ff;
+      }
+      #score,
+      #combo,
+      #rank {
+        font-weight: bold;
       }
       #score {
         font-size: 28px;
-        font-weight: bold;
         background: linear-gradient(90deg, #0ff, #0f8);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -58,14 +71,19 @@
       #combo {
         font-size: 40px;
         color: #0ff;
-        text-shadow: 0 0 10px #0ff;
+        text-shadow: 0 0 15px #0ff;
+      }
+      #rank {
+        font-size: 36px;
+        color: #ff0;
+        text-shadow: 0 0 20px #ff0;
       }
       .touchBtn {
         position: absolute;
         bottom: 0;
         width: 25%;
         height: 35vh;
-        background: rgba(0, 255, 255, 0.2);
+        background: rgba(0, 255, 255, 0.15);
         border: 1px solid #0ff;
         z-index: 2;
       }
@@ -78,16 +96,18 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        font-size: 40px;
-        background: rgba(0, 0, 0, 0.9);
+        font-size: 50px;
+        background: rgba(0, 0, 0, 0.95);
         opacity: 0;
         pointer-events: none;
         transition: 0.3s;
         z-index: 3;
+        color: #0ff;
+        text-shadow: 0 0 20px #0ff;
       }
       #sensitivityWrapper {
         position: absolute;
-        bottom: 10px;
+        bottom: 15px;
         left: 50%;
         transform: translateX(-50%);
         z-index: 4;
@@ -95,12 +115,11 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        font-size: 14px;
+        font-size: 16px;
       }
     </style>
   </head>
   <body>
-    <!-- YouTube background -->
     <iframe
       id="bgVideo"
       src="https://www.youtube.com/embed/0VKY7Moy4so?start=236&autoplay=1&loop=1&playlist=0VKY7Moy4so&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3"
@@ -110,7 +129,7 @@
     ></iframe>
 
     <div id="menu">
-      <h2>AAA MODE</h2>
+      <h2>AAA MODE v2</h2>
       <button id="fileBtn">Upload Song</button><br />
       <input id="urlInput" placeholder="Audio / Drive link" /><br />
       <button onclick="loadURL()">Load URL</button>
@@ -125,15 +144,18 @@
           <div id="score">0</div>
         </div>
         <div>
-          <div id="combo">0</div>
           COMBO
+          <div id="combo">0</div>
         </div>
-        <div>ACC <span id="acc">100%</span></div>
+        <div>
+          RANK
+          <div id="rank">D</div>
+        </div>
       </div>
     </div>
 
     <div id="sensitivityWrapper">
-      <label for="sensitivity">Sensitivity:</label>
+      <label>Sensitivity: </label>
       <input
         type="range"
         id="sensitivity"
@@ -190,6 +212,7 @@
 
       const scoreEl = document.getElementById("score");
       const comboEl = document.getElementById("combo");
+      const rankEl = document.getElementById("rank");
       const sensSlider = document.getElementById("sensitivity");
       const sensVal = document.getElementById("sensVal");
 
@@ -241,7 +264,6 @@
           }
           let rms = Math.sqrt(sum / size);
           if (rms > 0.15) {
-            // slightly more sensitive
             let t = i / sr;
             if (t - lastTime > 0.2) {
               beats.push(t);
@@ -260,23 +282,19 @@
         }));
       }
 
-      // DRAW FUNCTION FIXED
+      // DRAW FUNCTION
       function draw() {
         ctx.clearRect(0, 0, innerWidth, innerHeight);
-
-        // lanes
         for (let i = 0; i < 4; i++) {
           ctx.fillStyle = laneGlow[i]
             ? "rgba(0,255,255,0.4)"
             : "rgba(80,80,150,0.3)";
           ctx.fillRect((i * innerWidth) / 4, 0, innerWidth / 4, innerHeight);
         }
-
-        // hit line
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, innerHeight - 120, innerWidth, 5);
 
-        // draw notes (fully visible)
+        // draw notes
         if (gameStarted) {
           let time = performance.now() / 1000 - startTime;
           notes.forEach((n) => {
@@ -284,12 +302,10 @@
             let y = innerHeight - 120 - (n.time - time) * SPEED;
             if (y + 20 < 0 || y > innerHeight) return;
             let x = (n.lane * innerWidth) / 4 + 20;
-            let w = innerWidth / 4 - 40;
-            let h = 20;
-            ctx.fillStyle = "#0ff"; // solid cyan
+            ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
             ctx.shadowColor = "#0ff";
-            ctx.shadowBlur = 20;
-            ctx.fillRect(x, y, w, h);
+            ctx.shadowBlur = 15;
+            ctx.fillRect(x, y, innerWidth / 4 - 40, 20);
             ctx.shadowBlur = 0;
           });
         }
@@ -308,6 +324,7 @@
             combo = 0;
           }
         });
+        updateRank();
       }
 
       function hit(l) {
@@ -338,6 +355,16 @@
         } else combo = 0;
         scoreEl.innerText = score;
         comboEl.innerText = combo;
+      }
+
+      function updateRank() {
+        let acc = combo / Math.max(1, notes.length);
+        let r = "D";
+        if (acc > 0.9) r = "S";
+        else if (acc > 0.75) r = "A";
+        else if (acc > 0.6) r = "B";
+        else if (acc > 0.45) r = "C";
+        rankEl.innerText = r;
       }
 
       function loop() {
