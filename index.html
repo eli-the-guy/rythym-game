@@ -3,7 +3,6 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MUGA FINAL BOSS 🔥</title>
-
     <style>
       body {
         margin: 0;
@@ -12,7 +11,6 @@
         font-family: Arial;
         color: white;
       }
-
       #menu {
         position: absolute;
         top: 50%;
@@ -21,7 +19,6 @@
         text-align: center;
         z-index: 5;
       }
-
       button {
         padding: 12px 20px;
         margin: 6px;
@@ -31,7 +28,6 @@
         color: white;
         cursor: pointer;
       }
-
       #hud {
         position: absolute;
         top: 15px;
@@ -49,7 +45,6 @@
           inset 0 0 10px rgba(0, 255, 255, 0.15);
         z-index: 3;
       }
-
       #combo {
         font-size: 36px;
         color: #0ff;
@@ -62,7 +57,6 @@
         font-size: 26px;
         color: #0f0;
       }
-
       #perfectLine {
         position: absolute;
         bottom: 140px;
@@ -72,7 +66,6 @@
         opacity: 0.6;
         border-radius: 6px;
       }
-
       #endScreen {
         position: absolute;
         top: 0;
@@ -90,12 +83,10 @@
         pointer-events: none;
         transition: 0.3s;
       }
-
       canvas {
         position: absolute;
         z-index: 1;
       }
-
       #bgVideo {
         position: fixed;
         top: 0;
@@ -108,7 +99,6 @@
         pointer-events: none;
         display: none;
       }
-
       #videoBtn {
         position: absolute;
         top: 10px;
@@ -117,7 +107,6 @@
       }
     </style>
   </head>
-
   <body>
     <div id="menu">
       <h2>MUGA FINAL BOSS 🔥</h2>
@@ -127,16 +116,13 @@
       <label>Sensitivity: <span id="sensVal">1</span></label>
       <input type="range" min="0.5" max="2" step="0.1" value="1" id="sens" />
     </div>
-
     <div id="hud">
       <div>Score <span id="score">0</span></div>
       <div id="combo">0</div>
       <div>Rank <span id="rank">D</span></div>
       <div>Acc <span id="acc">100%</span></div>
     </div>
-
     <div id="perfectLine"></div>
-
     <div id="endScreen">
       <h1>RESULTS</h1>
       <div id="finalScore"></div>
@@ -144,30 +130,24 @@
       <div id="finalRank"></div>
       <button onclick="location.reload()">Restart</button>
     </div>
-
     <canvas id="c"></canvas>
     <video id="bgVideo" autoplay loop muted playsinline></video>
     <audio id="music" playsinline></audio>
-
     <script>
       const c = document.getElementById("c"),
         ctx = c.getContext("2d");
       c.width = innerWidth;
       c.height = innerHeight;
-
       const music = document.getElementById("music");
       const menu = document.getElementById("menu");
-
       const scoreEl = document.getElementById("score");
       const comboEl = document.getElementById("combo");
       const rankEl = document.getElementById("rank");
       const accEl = document.getElementById("acc");
-
       const endScreen = document.getElementById("endScreen");
       const finalScore = document.getElementById("finalScore");
       const finalAcc = document.getElementById("finalAcc");
       const finalRank = document.getElementById("finalRank");
-
       const bgVideo = document.getElementById("bgVideo");
 
       let notes = [],
@@ -183,10 +163,10 @@
       let screenShake = 0,
         comboGlow = 0,
         laneFlash = [0, 0, 0, 0];
-
-      const laneW = c.width / 4;
+      let laneW = c.width / 4;
       const SPEED = 500;
       let sensitivity = 1;
+      let goldMode = false;
 
       document.getElementById("sens").oninput = (e) => {
         sensitivity = parseFloat(e.target.value);
@@ -219,20 +199,19 @@
         input.click();
       };
 
-      // DEMO SONG
+      // DEMO SONG (placeholder notes, real track can be added later)
       document.getElementById("demoBtn").onclick = () => {
         menu.style.display = "none";
         notes = [];
         score = 0;
         combo = 0;
         hits = 0;
-
+        goldMode = false;
         let t = 0;
         for (let i = 0; i < 100; i++) {
           notes.push({ lane: i % 4, time: t, hit: false });
           t += 0.6 * sensitivity;
         }
-
         total = notes.length;
         songDuration = t;
         startTime = performance.now() / 1000;
@@ -251,15 +230,13 @@
           menu.style.display = "none";
           music.src = URL.createObjectURL(file);
           await music.play().catch(() => alert("Tap screen"));
-
           let ctx2 = new AudioContext();
           let decoded = await ctx2.decodeAudioData(await file.arrayBuffer());
-
           notes = [];
           score = 0;
           combo = 0;
           hits = 0;
-
+          goldMode = false;
           let data = decoded.getChannelData(0);
           let sr = decoded.sampleRate,
             last = 0;
@@ -267,7 +244,6 @@
             let amp = 0;
             for (let j = 0; j < 1024; j++) amp += Math.abs(data[i + j] || 0);
             amp /= 1024;
-
             let t = i / sr;
             if (amp > 0.12 && t - last > 0.3 * sensitivity) {
               notes.push({
@@ -302,7 +278,6 @@
         let time = performance.now() / 1000 - startTime;
         let best = null,
           bd = 999;
-
         notes.forEach((n) => {
           if (n.hit || n.lane !== l) return;
           let d = Math.abs(n.time - time);
@@ -311,29 +286,25 @@
             best = n;
           }
         });
-
         if (!best) {
           combo = 0;
           comboGlow = 0;
+          goldMode = false;
           addHitText("MISS", l);
           return;
         }
-
         laneFlash[l] = 1;
-
         if (bd < 0.12 * sensitivity) {
           score += 300;
           hits++;
           combo++;
           comboGlow = Math.min(comboGlow + 0.2, 1);
-          screenShake = 8;
           addHitText("PERFECT", l);
         } else if (bd < 0.2 * sensitivity) {
           score += 150;
           hits++;
           combo++;
           comboGlow = Math.min(comboGlow + 0.1, 1);
-          screenShake = 4;
           addHitText("EPIC", l);
         } else if (bd < 0.3 * sensitivity) {
           score += 50;
@@ -343,9 +314,10 @@
         } else {
           combo = 0;
           comboGlow = 0;
+          goldMode = false;
           addHitText("MISS", l);
         }
-
+        goldMode = combo >= 100;
         best.hit = true;
         scoreEl.textContent = score;
         comboEl.textContent = combo;
@@ -408,9 +380,6 @@
       function draw() {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, c.width, c.height);
-
-        if (menu.style.display !== "none") menu.style.display = "none";
-
         let shakeX = (Math.random() - 0.5) * screenShake;
         let shakeY = (Math.random() - 0.5) * screenShake;
         ctx.translate(shakeX, shakeY);
@@ -428,7 +397,6 @@
           grad.addColorStop(1, `hsl(${(t * 40 + 60) % 360},70%,5%)`);
           ctx.fillStyle = grad;
           ctx.fillRect(0, 0, c.width, c.height);
-
           ctx.beginPath();
           for (let x = 0; x < innerWidth; x += 10) {
             let y = Math.sin(x * 0.01 + t * 4) * 20 + innerHeight / 2;
@@ -442,16 +410,20 @@
         // LANES
         for (let i = 0; i < 4; i++) {
           laneFlash[i] *= 0.9;
-          ctx.fillStyle = `rgba(0,200,255,${0.08 + comboGlow * 0.15 + laneFlash[i] * 0.3})`;
+          ctx.fillStyle = goldMode
+            ? `rgba(255,255,255,${0.15 + comboGlow * 0.2 + laneFlash[i] * 0.3})`
+            : `rgba(0,200,255,${0.08 + comboGlow * 0.15 + laneFlash[i] * 0.3})`;
           ctx.fillRect(i * laneW, 0, laneW, c.height);
-          ctx.fillStyle = "rgba(0,255,255,0.25)";
+          ctx.fillStyle = goldMode
+            ? "rgba(255,255,0,0.3)"
+            : "rgba(0,255,255,0.25)";
           ctx.fillRect(i * laneW, c.height - 140, laneW, 140);
         }
 
         // PERFECT LINE
-        ctx.shadowColor = "#0ff";
-        ctx.shadowBlur = 20 * (1 + comboGlow);
-        ctx.fillStyle = "#0ff";
+        ctx.shadowBlur = goldMode ? 50 : 20 * (1 + comboGlow);
+        ctx.shadowColor = goldMode ? "#fff" : "#0ff";
+        ctx.fillStyle = goldMode ? "#fff" : "#0ff";
         ctx.fillRect(0, c.height - 140, c.width, 4);
         ctx.shadowBlur = 0;
 
@@ -460,16 +432,16 @@
         notes.forEach((n) => {
           if (n.hit) return;
           let y = c.height - 140 - (n.time - time) * SPEED;
-          ctx.shadowColor = `hsl(${n.lane * 90},100%,70%)`;
-          ctx.shadowBlur = 20;
-          ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
+          ctx.shadowColor = goldMode ? "#fff" : `hsl(${n.lane * 90},100%,70%)`;
+          ctx.shadowBlur = goldMode ? 50 : 20 * (1 + comboGlow);
+          ctx.fillStyle = goldMode ? "gold" : `hsl(${n.lane * 90},100%,60%)`;
           ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 50);
           ctx.shadowBlur = 0;
         });
 
         // PARTICLES
         particles.forEach((p) => {
-          ctx.fillStyle = "#0ff";
+          ctx.fillStyle = goldMode ? "#fff" : "#0ff";
           ctx.fillRect(p.x, p.y, 4, 4);
           p.x += p.vx;
           p.y += p.vy;
@@ -477,7 +449,7 @@
         });
         particles = particles.filter((p) => p.life > 0);
 
-        // HIT TEXT
+        // HIT TEXTS
         hitTexts.forEach((ht) => {
           ctx.globalAlpha = ht.life;
           if (ht.text === "PERFECT") ctx.fillStyle = "#0ff";
@@ -500,6 +472,8 @@
         notes.forEach((n) => {
           if (!n.hit && time - n.time > 0.4) {
             combo = 0;
+            comboGlow = 0;
+            goldMode = false;
             n.hit = true;
             addHitText("MISS", n.lane);
           }
