@@ -164,7 +164,7 @@
         comboGlow = 0,
         laneFlash = [0, 0, 0, 0];
       let laneW = c.width / 4;
-      const SPEED = 350; // adjusted for visible notes
+      const SPEED = 350;
       let sensitivity = 1;
       let goldMode = false;
 
@@ -207,6 +207,7 @@
         combo = 0;
         hits = 0;
         goldMode = false;
+        startTime = performance.now() / 1000;
         let t = 0;
         for (let i = 0; i < 100; i++) {
           notes.push({ lane: i % 4, time: t, hit: false });
@@ -214,12 +215,11 @@
         }
         total = notes.length;
         songDuration = t;
-        startTime = performance.now() / 1000;
         gameStarted = true;
         loop();
       };
 
-      // MP3 LOAD
+      // MP3 LOAD (RELIABLE NOTE GENERATION)
       document.getElementById("audioBtn").onclick = () => {
         let input = document.createElement("input");
         input.type = "file";
@@ -230,28 +230,36 @@
           menu.style.display = "none";
           music.src = URL.createObjectURL(file);
           await music.play().catch(() => alert("Tap screen"));
+
           let ctx2 = new AudioContext();
           let decoded = await ctx2.decodeAudioData(await file.arrayBuffer());
+
+          // Combine channels
+          let dataL = decoded.getChannelData(0);
+          let dataR =
+            decoded.numberOfChannels > 1 ? decoded.getChannelData(1) : dataL;
+          let combined = dataL.map((v, i) => (v + dataR[i]) / 2);
+
+          let windowSize = 2048,
+            lastTime = 0;
           notes = [];
           score = 0;
           combo = 0;
           hits = 0;
           goldMode = false;
-          let data = decoded.getChannelData(0);
-          let sr = decoded.sampleRate,
-            last = 0;
-          for (let i = 0; i < data.length; i += 1024) {
-            let amp = 0;
-            for (let j = 0; j < 1024; j++) amp += Math.abs(data[i + j] || 0);
-            amp /= 1024;
-            let t = i / sr;
-            if (amp > 0.12 && t - last > 0.3 * sensitivity) {
+          for (let i = 0; i < combined.length - windowSize; i += 512) {
+            let sum = 0;
+            for (let j = 0; j < windowSize; j++)
+              sum += Math.abs(combined[i + j]);
+            let amp = sum / windowSize;
+            let t = i / decoded.sampleRate;
+            if (amp > 0.05 && t - lastTime > 0.25 * sensitivity) {
               notes.push({
                 lane: Math.floor(Math.random() * 4),
                 time: t,
                 hit: false,
               });
-              last = t;
+              lastTime = t;
             }
           }
           total = notes.length;
@@ -291,37 +299,45 @@
           comboGlow = 0;
           goldMode = false;
           addHitText("MISS", l);
+          screenShake = 0;
           return;
         }
         laneFlash[l] = 1;
+        let hitType = "";
         if (bd < 0.12 * sensitivity) {
           score += 300;
           hits++;
           combo++;
           comboGlow = Math.min(comboGlow + 0.2, 1);
-          addHitText("PERFECT", l);
+          hitType = "PERFECT";
+          screenShake = 6;
         } else if (bd < 0.2 * sensitivity) {
           score += 150;
           hits++;
           combo++;
           comboGlow = Math.min(comboGlow + 0.1, 1);
-          addHitText("EPIC", l);
+          hitType = "EPIC";
+          screenShake = 4;
         } else if (bd < 0.3 * sensitivity) {
           score += 50;
           hits++;
           combo++;
-          addHitText("MID", l);
+          hitType = "MID";
+          screenShake = 2;
         } else {
           combo = 0;
           comboGlow = 0;
           goldMode = false;
-          addHitText("MISS", l);
+          hitType = "MISS";
+          screenShake = 0;
         }
         goldMode = combo >= 100;
         best.hit = true;
         scoreEl.textContent = score;
         comboEl.textContent = combo;
         updateRank();
+        addHitText(hitType, l);
+        spawnParticles(l, 8);
       }
 
       // PARTICLES
@@ -383,7 +399,7 @@
         let shakeX = (Math.random() - 0.5) * screenShake;
         let shakeY = (Math.random() - 0.5) * screenShake;
         ctx.translate(shakeX, shakeY);
-        screenShake *= 0.9;
+        screenShake *= 0.85;
         comboGlow *= 0.95;
 
         // BACKGROUND
@@ -409,7 +425,7 @@
 
         // LANES
         for (let i = 0; i < 4; i++) {
-          laneFlash[i] *= 0.9;
+          laneFlash[i] *= 0.85;
           ctx.fillStyle = goldMode
             ? `rgba(255,255,255,${0.15 + comboGlow * 0.2 + laneFlash[i] * 0.3})`
             : `rgba(0,200,255,${0.08 + comboGlow * 0.15 + laneFlash[i] * 0.3})`;
