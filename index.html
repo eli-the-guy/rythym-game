@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AAA Rhythm Game</title>
+    <title>AAA Rhythm Game with Beat Detection</title>
     <style>
       body {
         margin: 0;
@@ -100,7 +100,7 @@
     </style>
   </head>
   <body>
-    <!-- YOUTUBE BACKGROUND -->
+    <!-- YouTube background -->
     <iframe
       id="bgVideo"
       src="https://www.youtube.com/embed/0VKY7Moy4so?start=236&autoplay=1&loop=1&playlist=0VKY7Moy4so&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3"
@@ -163,11 +163,10 @@
       const overlay = document.getElementById("overlay");
       let audioCtx, analyser, dataArray;
       let notes = [],
-        particles = [];
-      let score = 0,
+        score = 0,
         combo = 0,
-        gameStarted = false;
-      let laneGlow = [0, 0, 0, 0];
+        gameStarted = false,
+        laneGlow = [0, 0, 0, 0];
       let startTime = 0;
 
       const laneW = c.width / 4;
@@ -229,12 +228,25 @@
         gameStarted = true;
       }
 
-      // TEST: guaranteed notes every 0.5s
-      function analyze(buf) {
-        const duration = music.duration || 30;
-        let beats = [];
-        for (let t = 1.5; t < duration; t += 0.5) {
-          beats.push(t);
+      function detectBeats(audioBuffer) {
+        const data = audioBuffer.getChannelData(0);
+        const sr = audioBuffer.sampleRate;
+        let beats = [],
+          size = 2048,
+          lastTime = 0;
+        for (let i = 0; i < data.length; i += size) {
+          let sum = 0;
+          for (let j = 0; j < size; j++) {
+            sum += Math.pow(data[i + j] || 0, 2);
+          }
+          let rms = Math.sqrt(sum / size);
+          if (rms > 0.2) {
+            let t = i / sr;
+            if (t - lastTime > 0.2) {
+              beats.push(t);
+              lastTime = t;
+            }
+          }
         }
         return beats;
       }
@@ -263,7 +275,7 @@
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, c.height - 120, c.width, 5);
 
-        // draw notes using game clock
+        // notes
         if (gameStarted) {
           let time = performance.now() / 1000 - startTime;
           notes.forEach((n) => {
@@ -344,18 +356,17 @@
 
       async function start(buf, src) {
         await unlock();
-        const srcNode = audioCtx.createMediaElementSource(music);
-        srcNode.connect(analyser);
+        const audioSource = audioCtx.createMediaElementSource(music);
+        audioSource.connect(analyser);
         analyser.connect(audioCtx.destination);
-        spawn(analyze(buf));
+        const decoded = await audioCtx.decodeAudioData(buf.slice(0));
+        spawn(detectBeats(decoded));
         music.src = src;
         menu.style.display = "none";
         loop();
         let p = music.play();
         if (p) {
-          p.then(async () => {
-            await countdown();
-          }).catch(() => {
+          p.then(() => countdown()).catch(() => {
             showOverlay("Tap to Start");
             overlay.onclick = async () => {
               await music.play();
