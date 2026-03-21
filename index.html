@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FINAL BOSS Rhythm Game</title>
+    <title>AAA Rhythm Game</title>
 
     <style>
       body {
@@ -17,6 +17,7 @@
         display: block;
       }
 
+      /* MENU */
       #menu {
         position: absolute;
         top: 50%;
@@ -26,11 +27,41 @@
         z-index: 20;
       }
 
+      /* FIRE HUD */
       #ui {
         position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 15;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        pointer-events: none;
+      }
+
+      #hud {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 12px 20px;
+        border-radius: 16px;
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+      }
+
+      #score {
+        font-size: 28px;
+        font-weight: bold;
+        background: linear-gradient(90deg, #0ff, #0f8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      #combo {
+        font-size: 40px;
+        color: #0ff;
+        text-shadow: 0 0 10px #0ff;
+        transition: 0.1s;
       }
 
       .touchBtn {
@@ -75,32 +106,36 @@
 
   <body>
     <div id="menu">
-      <h2>FINAL BOSS MODE</h2>
+      <h2>AAA MODE</h2>
       <button id="fileBtn">Upload Song</button><br />
       <input id="urlInput" placeholder="Audio / Drive link" /><br />
       <button onclick="loadURL()">Load URL</button><br />
-      <button id="easyBtn">Easy Mode</button><br />
-
-      <label>Sensitivity</label><br />
-      <input
-        type="range"
-        id="sens"
-        min="0.05"
-        max="0.5"
-        step="0.01"
-        value="0.15"
-      /><br />
-      <span id="sensVal">0.15</span>
     </div>
 
     <div id="overlay"></div>
     <div id="hitText"></div>
 
     <div id="ui">
-      Score: <span id="score">0</span><br />
-      Combo: <span id="combo">0</span><br />
-      Accuracy: <span id="acc">100%</span><br />
-      P:<span id="p">0</span> G:<span id="g">0</span> M:<span id="m">0</span>
+      <div id="hud">
+        <div>
+          <div>SCORE</div>
+          <div id="score">0</div>
+        </div>
+
+        <div>
+          <div id="combo">0</div>
+          <div>COMBO</div>
+        </div>
+
+        <div>
+          <div>ACC <span id="acc">100%</span></div>
+          <div>
+            P:<span id="p">0</span> G:<span id="g">0</span> M:<span id="m"
+              >0</span
+            >
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="touchBtn" style="left: 0" data-lane="0"></div>
@@ -121,7 +156,7 @@
       const overlay = document.getElementById("overlay");
       const hitText = document.getElementById("hitText");
 
-      let audioCtx;
+      let audioCtx, analyser, dataArray;
       let notes = [],
         particles = [];
       let score = 0,
@@ -151,19 +186,13 @@
         P: 3,
       };
 
-      document.getElementById("sens").oninput = (e) => {
-        sensVal.innerText = e.target.value;
-      };
-
-      document.getElementById("easyBtn").onclick = () => {
-        SPEED = 300;
-        PERF = 0.18;
-        GOOD = 0.35;
-      };
-
       async function unlock() {
-        if (!audioCtx)
+        if (!audioCtx) {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 64;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
         if (audioCtx.state === "suspended") await audioCtx.resume();
       }
 
@@ -172,7 +201,6 @@
         overlay.style.opacity = 1;
         overlay.style.pointerEvents = "auto";
       }
-
       function hideOverlay() {
         overlay.style.opacity = 0;
         overlay.style.pointerEvents = "none";
@@ -213,30 +241,28 @@
         document.getElementById("acc").innerText = acc.toFixed(1) + "%";
       }
 
+      function getRank(acc) {
+        if (acc >= 98) return "SS";
+        if (acc >= 95) return "S";
+        if (acc >= 90) return "A";
+        if (acc >= 80) return "B";
+        if (acc >= 70) return "C";
+        return "D";
+      }
+
+      function showResults() {
+        let acc = parseFloat(document.getElementById("acc").innerText);
+        let rank = getRank(acc);
+        showOverlay(`RANK: ${rank}\nScore: ${score}\nAccuracy: ${acc}%`);
+      }
+
+      music.onended = showResults;
+
       async function analyze(buf) {
-        const th = parseFloat(sens.value);
         const a = await audioCtx.decodeAudioData(buf.slice(0));
-        const d = a.getChannelData(0);
-        let beats = [],
-          sr = a.sampleRate;
-
-        for (let i = 0; i < d.length; i += 2048) {
-          let sum = 0;
-          for (let j = 0; j < 2048; j++) {
-            let v = d[i + j] || 0;
-            sum += v * v;
-          }
-          if (Math.sqrt(sum / 2048) > th) beats.push(i / sr);
-        }
-
-        let out = [],
-          last = 0;
-        beats.forEach((t) => {
-          if (t - last > 0.15) {
-            out.push(t);
-            last = t;
-          }
-        });
+        let interval = 60 / 120;
+        let out = [];
+        for (let t = 0; t < a.duration; t += interval) out.push(t);
         return out;
       }
 
@@ -252,6 +278,19 @@
         ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.fillRect(0, 0, c.width, c.height);
 
+        /* VISUALIZER */
+        if (analyser) {
+          analyser.getByteFrequencyData(dataArray);
+          for (let i = 0; i < dataArray.length; i++) {
+            let val = dataArray[i];
+            let x = (i / dataArray.length) * c.width;
+            let h = val * 1.2;
+            ctx.fillStyle = `hsl(${val * 2},100%,50%)`;
+            ctx.fillRect(x, c.height - h, 4, h);
+          }
+        }
+
+        /* LANES */
         for (let i = 0; i < 4; i++) {
           ctx.fillStyle = laneGlow[i]
             ? "rgba(0,255,255,0.4)"
@@ -262,6 +301,7 @@
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, c.height - 120, c.width, 5);
 
+        /* NOTES */
         notes.forEach((n) => {
           if (n.hit) return;
           let y = c.height - 120 - (n.time - music.currentTime) * SPEED;
@@ -269,14 +309,24 @@
           ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 20);
         });
 
+        /* PARTICLES */
         particles.forEach((p) => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
           ctx.fillStyle = p.color;
-          ctx.fillRect(p.x, p.y, 4, 4);
+          ctx.fill();
           p.x += p.vx;
           p.y += p.vy;
           p.life--;
         });
         particles = particles.filter((p) => p.life > 0);
+
+        /* UI REACTIVE */
+        if (analyser) {
+          let avg = dataArray.reduce((a, b) => a + b) / dataArray.length;
+          document.getElementById("hud").style.boxShadow =
+            `0 0 ${avg / 2}px rgba(0,255,255,0.6)`;
+        }
       }
 
       function update() {
@@ -293,13 +343,17 @@
         });
       }
 
+      function screenShake() {
+        c.style.transform = `translate(${Math.random() * 6 - 3}px,${Math.random() * 6 - 3}px)`;
+        setTimeout(() => (c.style.transform = "translate(0,0)"), 50);
+      }
+
       function hit(l) {
         laneGlow[l] = 1;
         setTimeout(() => (laneGlow[l] = 0), 100);
 
         let best = null,
           bd = 999;
-
         notes.forEach((n) => {
           if (n.hit || n.lane !== l) return;
           let d = Math.abs(n.time - music.currentTime);
@@ -327,6 +381,7 @@
           best.hit = true;
           showHit("PERFECT", "#0ff");
           spawnParticles(x, y, "#0ff");
+          screenShake();
         } else if (bd <= GOOD) {
           combo++;
           score += 70 * combo;
@@ -373,6 +428,11 @@
 
       async function start(buf, src) {
         await unlock();
+
+        const srcNode = audioCtx.createMediaElementSource(music);
+        srcNode.connect(analyser);
+        analyser.connect(audioCtx.destination);
+
         spawn(await analyze(buf));
         music.src = src;
 
@@ -380,7 +440,6 @@
         loop();
 
         let p = music.play();
-
         if (p) {
           p.then(async () => await countdown()).catch(() => {
             showOverlay("Tap to Start");
