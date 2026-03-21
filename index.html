@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MUGA RHYTHM</title>
+    <title>MUGA RHYTHM FIXED</title>
 
     <style>
       body {
@@ -94,13 +94,23 @@
         pointer-events: none;
         transition: 0.4s;
       }
+
+      #perfectLine {
+        position: absolute;
+        width: 100%;
+        height: 4px;
+        background: #0ff;
+        bottom: 150px;
+        z-index: 2;
+        opacity: 0.5;
+      }
     </style>
   </head>
 
   <body>
     <div id="menu">
       <h2>MUGA MODE 🔥</h2>
-      <button id="demoBtn">▶ Play Original Song</button>
+      <button id="demoBtn">▶ Play Demo Song</button>
       <button id="audioBtn">🎵 Load MP3</button>
     </div>
 
@@ -110,6 +120,8 @@
       <div>Rank <span id="rank">D</span></div>
       <div>Acc <span id="acc">100%</span></div>
     </div>
+
+    <div id="perfectLine"></div>
 
     <div id="endScreen">
       <h1>RESULTS</h1>
@@ -125,6 +137,7 @@
     <div class="touchBtn" style="left: 75%" data-lane="3"></div>
 
     <canvas id="c"></canvas>
+    <audio id="music" playsinline></audio>
 
     <script>
       const c = document.getElementById("c"),
@@ -132,6 +145,7 @@
       c.width = innerWidth;
       c.height = innerHeight;
 
+      const music = document.getElementById("music");
       let notes = [],
         score = 0,
         combo = 0,
@@ -141,7 +155,7 @@
         gameStarted = false,
         songDuration = 0;
 
-      const laneW = innerWidth / 4,
+      const laneW = c.width / 4,
         SPEED = 500;
 
       const scoreEl = document.getElementById("score");
@@ -151,10 +165,27 @@
 
       const endScreen = document.getElementById("endScreen");
 
-      // 🎵 ORIGINAL SONG
-      document.getElementById("demoBtn").onclick = () => startSong();
+      // Demo Song (auto-generated)
+      document.getElementById("demoBtn").onclick = () => {
+        music.src = ""; // No MP3, use demo notes
+        notes = [];
+        score = 0;
+        combo = 0;
+        hits = 0;
+        let t = 0;
+        for (let i = 0; i < 120; i++) {
+          notes.push({ lane: i % 4, time: t, hit: false });
+          t += 0.2; // big timing window -> almost touching
+        }
+        total = notes.length;
+        songDuration = t;
+        startTime = performance.now() / 1000;
+        gameStarted = true;
+        music.pause();
+        loop();
+      };
 
-      // 🎵 MP3
+      // MP3 support
       document.getElementById("audioBtn").onclick = () => {
         let input = document.createElement("input");
         input.type = "file";
@@ -164,9 +195,12 @@
           let file = e.target.files[0];
           if (!file) return;
 
-          let ctxA = new AudioContext();
-          let buf = await file.arrayBuffer();
-          let decoded = await ctxA.decodeAudioData(buf);
+          music.src = URL.createObjectURL(file);
+          await music.play().catch(() => {});
+
+          let audioCtx = new AudioContext();
+          const arrayBuffer = await file.arrayBuffer();
+          const decoded = await audioCtx.decodeAudioData(arrayBuffer);
 
           notes = [];
           score = 0;
@@ -177,14 +211,15 @@
           let sr = decoded.sampleRate;
           let last = 0;
 
-          for (let i = 0; i < data.length; i += 2048) {
+          for (let i = 0; i < data.length; i += 1024) {
+            // more notes = forgiving
             let sum = 0;
-            for (let j = 0; j < 2048; j++) sum += Math.abs(data[i + j] || 0);
-            let amp = sum / 2048;
-
-            if (amp > 0.25) {
+            for (let j = 0; j < 1024; j++) sum += Math.abs(data[i + j] || 0);
+            let amp = sum / 1024;
+            if (amp > 0.1) {
+              // more sensitive
               let t = i / sr;
-              if (t - last > 0.2) {
+              if (t - last > 0.15) {
                 notes.push({
                   lane: Math.floor(Math.random() * 4),
                   time: t,
@@ -197,10 +232,6 @@
 
           total = notes.length;
           songDuration = decoded.duration;
-
-          let audio = new Audio(URL.createObjectURL(file));
-          audio.play();
-
           startTime = performance.now() / 1000;
           gameStarted = true;
           loop();
@@ -208,35 +239,22 @@
         input.click();
       };
 
-      // DEMO SONG
-      function startSong() {
-        notes = [];
-        score = 0;
-        combo = 0;
-        hits = 0;
-
-        let t = 0;
-        for (let i = 0; i < 120; i++) {
-          notes.push({ lane: i % 4, time: t, hit: false });
-          t += 0.4;
-        }
-        total = notes.length;
-        songDuration = t;
-
-        startTime = performance.now() / 1000;
-        gameStarted = true;
-        loop();
-      }
-
       // DRAW
       function draw() {
         ctx.clearRect(0, 0, c.width, c.height);
 
-        // receptors
+        // lanes
+        for (let i = 0; i < 4; i++) {
+          ctx.fillStyle = "rgba(80,80,150,0.3)";
+          ctx.fillRect(i * laneW, 0, laneW, c.height);
+        }
+
+        // hit zones
         for (let i = 0; i < 4; i++) {
           ctx.fillStyle = "rgba(0,255,255,0.25)";
           ctx.fillRect(i * laneW + 10, c.height - 140, laneW - 20, 60);
           ctx.strokeStyle = "#0ff";
+          ctx.lineWidth = 2;
           ctx.strokeRect(i * laneW + 10, c.height - 140, laneW - 20, 60);
         }
 
@@ -247,7 +265,6 @@
             if (n.hit) return;
             let y = c.height - 140 - (n.time - time) * SPEED;
             if (y < -50 || y > c.height) return;
-
             ctx.shadowColor = "#0ff";
             ctx.shadowBlur = 15;
             ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
@@ -263,13 +280,14 @@
 
         // misses
         notes.forEach((n) => {
-          if (!n.hit && time - n.time > 0.3) {
+          if (!n.hit && time - n.time > 0.4) {
+            // forgiving
             n.hit = true;
             combo = 0;
           }
         });
 
-        // END SCREEN
+        // END
         if (time > songDuration + 1) {
           showEnd();
         }
@@ -297,16 +315,17 @@
           return;
         }
 
-        if (bd < 0.08) {
+        // BIG TIMING WINDOWS
+        if (bd < 0.15) {
           score += 300;
           hits++;
-        } else if (bd < 0.14) {
+        } else if (bd < 0.25) {
           score += 200;
           hits++;
-        } else if (bd < 0.22) {
+        } else if (bd < 0.35) {
           score += 100;
           hits++;
-        } else if (bd < 0.3) {
+        } else if (bd < 0.45) {
           score += 50;
           hits++;
         } else {
