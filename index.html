@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MUGA RHYTHM FIXED</title>
+    <title>MUGA RHYTHM AAA</title>
 
     <style>
       body {
@@ -13,7 +13,6 @@
         font-family: Arial;
         overflow: hidden;
       }
-
       #menu {
         position: absolute;
         top: 50%;
@@ -22,14 +21,12 @@
         text-align: center;
         z-index: 5;
       }
-
       button {
         padding: 12px 20px;
         margin: 6px;
         border: none;
         border-radius: 10px;
       }
-
       #hud {
         position: absolute;
         top: 20px;
@@ -47,7 +44,6 @@
           inset 0 0 10px rgba(0, 255, 255, 0.15);
         z-index: 3;
       }
-
       #combo {
         font-size: 40px;
         color: #0ff;
@@ -56,27 +52,25 @@
         font-size: 30px;
         color: #ff0;
       }
-
+      #sensitivityControl {
+        margin-top: 10px;
+      }
       .touchBtn {
         position: absolute;
         bottom: 0;
         width: 25%;
-        height: 35vh;
-        background: rgba(0, 255, 255, 0.1);
+        height: 60px;
+        background: rgba(0, 255, 255, 0.05);
       }
-
-      #bgVideo {
-        position: fixed;
-        top: 0;
-        left: 0;
+      #perfectLine {
+        position: absolute;
         width: 100%;
-        height: 100%;
-        object-fit: cover;
-        z-index: -2;
-        filter: brightness(0.3);
-        display: none;
+        height: 4px;
+        background: #0ff;
+        bottom: 140px;
+        z-index: 2;
+        opacity: 0.5;
       }
-
       #endScreen {
         position: absolute;
         top: 0;
@@ -94,24 +88,41 @@
         pointer-events: none;
         transition: 0.4s;
       }
-
-      #perfectLine {
-        position: absolute;
+      #bgVideo {
+        position: fixed;
+        top: 0;
+        left: 0;
         width: 100%;
-        height: 4px;
-        background: #0ff;
-        bottom: 150px;
-        z-index: 2;
-        opacity: 0.5;
+        height: 100%;
+        object-fit: cover;
+        z-index: -2;
+        filter: brightness(0.3);
+        pointer-events: none;
+        display: none;
+      }
+      canvas {
+        position: absolute;
+        z-index: 1;
       }
     </style>
   </head>
-
   <body>
     <div id="menu">
       <h2>MUGA MODE 🔥</h2>
       <button id="demoBtn">▶ Play Demo Song</button>
       <button id="audioBtn">🎵 Load MP3</button>
+      <button id="videoBtn">🎥 Load Video</button>
+      <div>
+        <label>Sensitivity: <span id="sensVal">1</span></label>
+        <input
+          type="range"
+          min="0.3"
+          max="3"
+          step="0.1"
+          value="1"
+          id="sensitivityControl"
+        />
+      </div>
     </div>
 
     <div id="hud">
@@ -131,6 +142,8 @@
       <button onclick="location.reload()">RESTART</button>
     </div>
 
+    <video id="bgVideo" autoplay loop muted playsinline></video>
+
     <div class="touchBtn" style="left: 0" data-lane="0"></div>
     <div class="touchBtn" style="left: 25%" data-lane="1"></div>
     <div class="touchBtn" style="left: 50%" data-lane="2"></div>
@@ -146,6 +159,14 @@
       c.height = innerHeight;
 
       const music = document.getElementById("music");
+      const menu = document.getElementById("menu");
+      const sensitivitySlider = document.getElementById("sensitivityControl");
+      let sensitivity = parseFloat(sensitivitySlider.value);
+      sensitivitySlider.oninput = () => {
+        sensitivity = parseFloat(sensitivitySlider.value);
+        document.getElementById("sensVal").innerText = sensitivity;
+      };
+
       let notes = [],
         score = 0,
         combo = 0,
@@ -154,7 +175,6 @@
       let startTime = 0,
         gameStarted = false,
         songDuration = 0;
-
       const laneW = c.width / 4,
         SPEED = 500;
 
@@ -162,12 +182,47 @@
       const comboEl = document.getElementById("combo");
       const rankEl = document.getElementById("rank");
       const accEl = document.getElementById("acc");
-
       const endScreen = document.getElementById("endScreen");
+      const bgVideo = document.getElementById("bgVideo");
 
-      // Demo Song (auto-generated)
+      const hitTexts = [];
+
+      // Audio visualizer
+      let audioCtx, analyser, source, dataArray;
+      function setupAudioVisualizer() {
+        if (!music.src) return;
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          source = audioCtx.createMediaElementSource(music);
+          analyser = audioCtx.createAnalyser();
+          source.connect(analyser);
+          analyser.connect(audioCtx.destination);
+          analyser.fftSize = 64;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+      }
+      function getFreqData() {
+        if (!analyser) return [0, 0, 0, 0];
+        analyser.getByteFrequencyData(dataArray);
+        let out = [];
+        for (let i = 0; i < 4; i++) {
+          let start = Math.floor((i * dataArray.length) / 4);
+          let end = Math.floor(((i + 1) * dataArray.length) / 4);
+          let sum = 0;
+          for (let j = start; j < end; j++) sum += dataArray[j];
+          out[i] = sum / (end - start) / 255;
+        }
+        return out;
+      }
+      music.addEventListener("play", () => {
+        if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+        setupAudioVisualizer();
+      });
+
+      // DEMO SONG
       document.getElementById("demoBtn").onclick = () => {
-        music.src = ""; // No MP3, use demo notes
+        menu.style.display = "none";
+        music.pause();
         notes = [];
         score = 0;
         combo = 0;
@@ -175,49 +230,41 @@
         let t = 0;
         for (let i = 0; i < 120; i++) {
           notes.push({ lane: i % 4, time: t, hit: false });
-          t += 0.2; // big timing window -> almost touching
+          t += 0.4 * sensitivity;
         }
         total = notes.length;
         songDuration = t;
         startTime = performance.now() / 1000;
         gameStarted = true;
-        music.pause();
         loop();
       };
 
-      // MP3 support
+      // MP3 LOAD
       document.getElementById("audioBtn").onclick = () => {
         let input = document.createElement("input");
         input.type = "file";
         input.accept = "audio/*";
-
         input.onchange = async (e) => {
           let file = e.target.files[0];
           if (!file) return;
-
+          menu.style.display = "none";
           music.src = URL.createObjectURL(file);
           await music.play().catch(() => {});
-
-          let audioCtx = new AudioContext();
+          let audioCtxTmp = new AudioContext();
           const arrayBuffer = await file.arrayBuffer();
-          const decoded = await audioCtx.decodeAudioData(arrayBuffer);
-
+          const decoded = await audioCtxTmp.decodeAudioData(arrayBuffer);
           notes = [];
           score = 0;
           combo = 0;
           hits = 0;
-
           let data = decoded.getChannelData(0);
-          let sr = decoded.sampleRate;
-          let last = 0;
-
+          let sr = decoded.sampleRate,
+            last = 0;
           for (let i = 0; i < data.length; i += 1024) {
-            // more notes = forgiving
             let sum = 0;
             for (let j = 0; j < 1024; j++) sum += Math.abs(data[i + j] || 0);
             let amp = sum / 1024;
             if (amp > 0.1) {
-              // more sensitive
               let t = i / sr;
               if (t - last > 0.15) {
                 notes.push({
@@ -229,7 +276,6 @@
               }
             }
           }
-
           total = notes.length;
           songDuration = decoded.duration;
           startTime = performance.now() / 1000;
@@ -239,28 +285,60 @@
         input.click();
       };
 
+      // VIDEO LOAD
+      document.getElementById("videoBtn").onclick = () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "video/*";
+
+        input.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const url = URL.createObjectURL(file);
+          bgVideo.src = url;
+          bgVideo.style.display = "block";
+          bgVideo.play();
+        };
+        input.click();
+      };
+
       // DRAW
       function draw() {
-        ctx.clearRect(0, 0, c.width, c.height);
+        // 🌌 Reactive background if no video
+        if (bgVideo.style.display !== "block") {
+          let time = performance.now() * 0.002;
+          let gradient = ctx.createLinearGradient(0, 0, 0, innerHeight);
+          gradient.addColorStop(0, `hsl(${(time * 40) % 360},70%,10%)`);
+          gradient.addColorStop(1, `hsl(${(time * 40 + 60) % 360},70%,5%)`);
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, innerWidth, innerHeight);
 
-        // lanes
-        for (let i = 0; i < 4; i++) {
-          ctx.fillStyle = "rgba(80,80,150,0.3)";
-          ctx.fillRect(i * laneW, 0, laneW, c.height);
+          ctx.beginPath();
+          for (let x = 0; x < innerWidth; x += 10) {
+            let y = Math.sin(x * 0.01 + time * 4) * 20 + innerHeight / 2;
+            ctx.lineTo(x, y);
+          }
+          ctx.strokeStyle = "rgba(0,255,255,0.2)";
+          ctx.lineWidth = 3;
+          ctx.stroke();
         }
 
-        // hit zones
+        let time = performance.now() / 1000 - startTime;
+        let freqData = getFreqData();
+
+        // lanes + hit zone
         for (let i = 0; i < 4; i++) {
-          ctx.fillStyle = "rgba(0,255,255,0.25)";
-          ctx.fillRect(i * laneW + 10, c.height - 140, laneW - 20, 60);
+          let h = (freqData[i] || 0) * 200;
+          ctx.fillStyle = `rgba(0,100,255,0.3)`;
+          ctx.fillRect(i * laneW, 0, laneW, innerHeight - 140 + h);
+          ctx.fillStyle = "rgba(0,255,255,0.15)";
+          ctx.fillRect(i * laneW, innerHeight - 140, laneW, 60);
           ctx.strokeStyle = "#0ff";
-          ctx.lineWidth = 2;
-          ctx.strokeRect(i * laneW + 10, c.height - 140, laneW - 20, 60);
+          ctx.strokeRect(i * laneW, innerHeight - 140, laneW, 60);
         }
 
         // notes
         if (gameStarted) {
-          let time = performance.now() / 1000 - startTime;
           notes.forEach((n) => {
             if (n.hit) return;
             let y = c.height - 140 - (n.time - time) * SPEED;
@@ -272,26 +350,32 @@
             ctx.shadowBlur = 0;
           });
         }
+
+        // hit texts
+        hitTexts.forEach((ht) => {
+          ctx.fillStyle = ht.color;
+          ctx.font = "30px Arial";
+          ctx.fillText(ht.text, ht.x, ht.y);
+          ht.y -= 1.5;
+          ht.alpha -= 0.02;
+          ctx.globalAlpha = ht.alpha;
+          ctx.globalAlpha = 1;
+        });
       }
 
       // UPDATE
       function update() {
         let time = performance.now() / 1000 - startTime;
-
-        // misses
         notes.forEach((n) => {
-          if (!n.hit && time - n.time > 0.4) {
-            // forgiving
+          if (!n.hit && time - n.time > 0.4 * sensitivity) {
             n.hit = true;
             combo = 0;
+            addHitText("MISS", n.lane);
           }
         });
-
-        // END
         if (time > songDuration + 1) {
           showEnd();
         }
-
         updateRank();
       }
 
@@ -300,7 +384,6 @@
         let time = performance.now() / 1000 - startTime;
         let best = null,
           bd = 999;
-
         notes.forEach((n) => {
           if (n.hit || n.lane !== l) return;
           let d = Math.abs(n.time - time);
@@ -309,63 +392,69 @@
             best = n;
           }
         });
-
         if (!best) {
           combo = 0;
+          addHitText("MISS", l);
           return;
         }
-
-        // BIG TIMING WINDOWS
-        if (bd < 0.15) {
+        let result = "PERFECT";
+        if (bd < 0.08 * sensitivity) {
           score += 300;
           hits++;
-        } else if (bd < 0.25) {
+        } else if (bd < 0.14 * sensitivity) {
           score += 200;
           hits++;
-        } else if (bd < 0.35) {
+          result = "GREAT";
+        } else if (bd < 0.22 * sensitivity) {
           score += 100;
           hits++;
-        } else if (bd < 0.45) {
+          result = "FAIR";
+        } else if (bd < 0.3 * sensitivity) {
           score += 50;
           hits++;
+          result = "BAD";
         } else {
           combo = 0;
+          addHitText("MISS", l);
           return;
         }
-
         best.hit = true;
         combo++;
-
         scoreEl.innerText = score;
         comboEl.innerText = combo;
+        addHitText(result, l);
+      }
+      function addHitText(text, lane) {
+        hitTexts.push({
+          text: text,
+          color: "#0ff",
+          x: lane * laneW + laneW / 2 - 30,
+          y: c.height - 150,
+          alpha: 1,
+        });
       }
 
       // RANK
       function updateRank() {
         let acc = hits / Math.max(1, total);
         accEl.innerText = Math.round(acc * 100) + "%";
-
         let r = "D";
         if (acc > 0.95) r = "S";
         else if (acc > 0.85) r = "A";
         else if (acc > 0.7) r = "B";
         else if (acc > 0.5) r = "C";
-
         rankEl.innerText = r;
       }
 
       // END SCREEN
       function showEnd() {
         gameStarted = false;
-
         let acc = hits / Math.max(1, total);
         let rank = rankEl.innerText;
-
         document.getElementById("finalScore").innerText = "Score: " + score;
         document.getElementById("finalAcc").innerText =
           "Accuracy: " + Math.round(acc * 100) + "%";
         document.getElementById("finalRank").innerText = "Rank: " + rank;
-
         endScreen.style.opacity = 1;
         endScreen.style.pointerEvents = "auto";
       }
@@ -396,7 +485,6 @@
         let l = keys[e.key.toUpperCase()];
         if (l != null) hit(l);
       });
-
       document.querySelectorAll(".touchBtn").forEach((b) => {
         b.addEventListener(
           "touchstart",
@@ -406,103 +494,6 @@
           },
           { passive: false },
         );
-      });
-    </script>
-    <!-- Hit area now extends to top -->
-    <script>
-      // DRAW updated for full lane hit area + audio visualizer
-      function draw() {
-        ctx.clearRect(0, 0, c.width, c.height);
-
-        // lanes + visualizer
-        if (gameStarted && music.src) {
-          let time = performance.now() / 1000 - startTime;
-          let freqData = getFreqData();
-          for (let i = 0; i < 4; i++) {
-            // reactive lane
-            let h = (freqData[i] || 0) * 200; // visualizer height
-            ctx.fillStyle = `rgba(0,100,255,0.3)`;
-            ctx.fillRect(i * laneW, 0, laneW, c.height - 140 + h);
-
-            // hit area now full lane
-            ctx.fillStyle = "rgba(0,255,255,0.15)";
-            ctx.fillRect(i * laneW, 0, laneW, c.height - 140);
-            ctx.strokeStyle = "#0ff";
-            ctx.strokeRect(i * laneW, 0, laneW, c.height - 140);
-          }
-        } else {
-          // normal lanes if no audio
-          for (let i = 0; i < 4; i++) {
-            ctx.fillStyle = "rgba(80,80,150,0.3)";
-            ctx.fillRect(i * laneW, 0, laneW, c.height - 140);
-            ctx.fillStyle = "rgba(0,255,255,0.15)";
-            ctx.fillRect(i * laneW, 0, laneW, c.height - 140);
-            ctx.strokeStyle = "#0ff";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(i * laneW, 0, laneW, c.height - 140);
-          }
-        }
-
-        // notes
-        if (gameStarted) {
-          let time = performance.now() / 1000 - startTime;
-          notes.forEach((n) => {
-            if (n.hit) return;
-            let y = c.height - 140 - (n.time - time) * SPEED;
-            if (y < -50 || y > c.height) return;
-            ctx.shadowColor = "#0ff";
-            ctx.shadowBlur = 15;
-            ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
-            ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 50);
-            ctx.shadowBlur = 0;
-          });
-        }
-
-        // hit texts
-        hitTexts.forEach((ht, i) => {
-          ctx.fillStyle = ht.color;
-          ctx.font = "30px Arial";
-          ctx.fillText(ht.text, ht.x, ht.y);
-          ht.y -= 1.5;
-          ht.alpha -= 0.02;
-          ctx.globalAlpha = ht.alpha;
-          ctx.globalAlpha = 1;
-        });
-        hitTexts.filter((ht) => ht.alpha > 0);
-      }
-
-      // Audio visualizer setup
-      let audioCtx, analyser, source, dataArray;
-      function setupAudioVisualizer() {
-        if (!music.src) return;
-        if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          source = audioCtx.createMediaElementSource(music);
-          analyser = audioCtx.createAnalyser();
-          source.connect(analyser);
-          analyser.connect(audioCtx.destination);
-          analyser.fftSize = 64;
-          dataArray = new Uint8Array(analyser.frequencyBinCount);
-        }
-      }
-      function getFreqData() {
-        if (!analyser) return [0, 0, 0, 0];
-        analyser.getByteFrequencyData(dataArray);
-        let out = [];
-        for (let i = 0; i < 4; i++) {
-          let start = Math.floor((i * dataArray.length) / 4);
-          let end = Math.floor(((i + 1) * dataArray.length) / 4);
-          let sum = 0;
-          for (let j = start; j < end; j++) sum += dataArray[j];
-          out[i] = sum / (end - start) / 255; // normalize 0-1
-        }
-        return out;
-      }
-
-      // Call visualizer when song plays
-      music.addEventListener("play", () => {
-        if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
-        setupAudioVisualizer();
       });
     </script>
   </body>
