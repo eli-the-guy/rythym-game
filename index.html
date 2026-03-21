@@ -228,10 +228,9 @@
 
       // GUARANTEED NOTES SPAWN
       function analyze(buf) {
-        const duration = music.duration || 30; // fallback to 30s
+        const duration = music.duration || 30;
         let beats = [];
         for (let t = 1.5; t < duration; t += 0.5) {
-          // every 0.5s
           beats.push(t);
         }
         return beats;
@@ -269,14 +268,21 @@
           ctx.fillRect(i * laneW, 0, laneW, c.height);
         }
 
-        /* NOTES */
-        let time = gameStarted ? music.currentTime : 0;
-        notes.forEach((n) => {
-          if (n.hit) return;
-          let y = c.height - 120 - (n.time - time) * SPEED;
-          ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
-          ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 20);
-        });
+        /* HIT LINE */
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, c.height - 120, c.width, 5);
+
+        // draw notes
+        if (gameStarted) {
+          let time = music.currentTime;
+          notes.forEach((n) => {
+            if (n.hit) return;
+            let y = c.height - 120 - (n.time - time) * SPEED;
+            if (y + 20 < 0) return; // skip if still above screen
+            ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
+            ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 20);
+          });
+        }
 
         /* PARTICLES */
         particles.forEach((p) => {
