@@ -1,17 +1,16 @@
 <!doctype html>
 <html>
   <head>
-    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MUGA RHYTHM AAA</title>
+    <title>MUGA FINAL BOSS</title>
 
     <style>
       body {
         margin: 0;
         background: #000;
-        color: white;
-        font-family: Arial;
         overflow: hidden;
+        font-family: Arial;
+        color: white;
       }
       #menu {
         position: absolute;
@@ -22,138 +21,62 @@
         z-index: 5;
       }
       button {
-        padding: 12px 20px;
+        padding: 12px;
         margin: 6px;
-        border: none;
         border-radius: 10px;
+        border: none;
       }
       #hud {
         position: absolute;
-        top: 20px;
+        top: 10px;
         left: 50%;
         transform: translateX(-50%);
         display: flex;
-        gap: 30px;
-        padding: 15px 25px;
-        border-radius: 20px;
-        background: rgba(20, 20, 40, 0.6);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(0, 255, 255, 0.3);
-        box-shadow:
-          0 0 20px rgba(0, 255, 255, 0.2),
-          inset 0 0 10px rgba(0, 255, 255, 0.15);
-        z-index: 3;
-      }
-      #combo {
-        font-size: 40px;
-        color: #0ff;
-      }
-      #rank {
-        font-size: 30px;
-        color: #ff0;
-      }
-      #acc {
-        font-size: 30px;
-        color: #0f0;
-      }
-      #sensitivityControl {
-        margin-top: 10px;
-      }
-      .touchBtn {
-        position: absolute;
-        bottom: 0;
-        width: 25%;
-        height: 80px;
-        background: rgba(0, 255, 255, 0.05);
+        gap: 20px;
+        padding: 10px 20px;
+        border-radius: 15px;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
       }
       #perfectLine {
         position: absolute;
+        bottom: 140px;
         width: 100%;
         height: 12px;
         background: #0ff;
-        bottom: 140px;
-        z-index: 2;
         opacity: 0.5;
-        border-radius: 6px;
       }
-      #endScreen {
+      canvas {
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.9);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        font-size: 30px;
-        z-index: 10;
-        opacity: 0;
-        pointer-events: none;
-        transition: 0.4s;
       }
       #bgVideo {
         position: fixed;
-        top: 0;
-        left: 0;
         width: 100%;
         height: 100%;
         object-fit: cover;
         z-index: -2;
         filter: brightness(0.3);
-        pointer-events: none;
         display: none;
-      }
-      canvas {
-        position: absolute;
-        z-index: 1;
       }
     </style>
   </head>
+
   <body>
     <div id="menu">
-      <h2>MUGA MODE 🔥</h2>
-      <button id="demoBtn">▶ Play Demo Song</button>
-      <button id="audioBtn">🎵 Load MP3</button>
-      <button id="videoBtn">🎥 Load Video</button>
-      <div>
-        <label>Sensitivity: <span id="sensVal">1</span></label>
-        <input
-          type="range"
-          min="0.3"
-          max="3"
-          step="0.1"
-          value="1"
-          id="sensitivityControl"
-        />
-      </div>
+      <h2>MUGA FINAL BOSS 🔥</h2>
+      <button id="demoBtn">Play Demo</button>
+      <button id="audioBtn">Load MP3</button>
+      <button id="videoBtn">Load Video</button>
     </div>
 
     <div id="hud">
-      <div>Score <span id="score">0</span></div>
-      <div id="combo">0</div>
-      <div>Rank <span id="rank">D</span></div>
-      <div>Acc <span id="acc">100%</span></div>
+      <div>Score: <span id="score">0</span></div>
+      <div>Combo: <span id="combo">0</span></div>
     </div>
 
     <div id="perfectLine"></div>
 
-    <div id="endScreen">
-      <h1>RESULTS</h1>
-      <div id="finalScore"></div>
-      <div id="finalAcc"></div>
-      <div id="finalRank"></div>
-      <button onclick="location.reload()">RESTART</button>
-    </div>
-
     <video id="bgVideo" autoplay loop muted playsinline></video>
-
-    <div class="touchBtn" style="left: 0" data-lane="0"></div>
-    <div class="touchBtn" style="left: 25%" data-lane="1"></div>
-    <div class="touchBtn" style="left: 50%" data-lane="2"></div>
-    <div class="touchBtn" style="left: 75%" data-lane="3"></div>
-
     <canvas id="c"></canvas>
     <audio id="music" playsinline></audio>
 
@@ -163,234 +86,92 @@
       c.width = innerWidth;
       c.height = innerHeight;
 
-      const music = document.getElementById("music");
-      const menu = document.getElementById("menu");
-      const sensitivitySlider = document.getElementById("sensitivityControl");
-      let sensitivity = parseFloat(sensitivitySlider.value);
-      sensitivitySlider.oninput = () => {
-        sensitivity = parseFloat(sensitivitySlider.value);
-        document.getElementById("sensVal").innerText = sensitivity;
-      };
-
       let notes = [],
-        score = 0,
+        particles = [];
+      let score = 0,
         combo = 0,
-        hits = 0,
-        total = 0;
-      let startTime = 0,
+        startTime = 0,
         gameStarted = false,
         songDuration = 0;
-      const laneW = c.width / 4,
+
+      const laneW = innerWidth / 4,
         SPEED = 500;
 
-      const scoreEl = document.getElementById("score");
-      const comboEl = document.getElementById("combo");
-      const rankEl = document.getElementById("rank");
-      const accEl = document.getElementById("acc");
-      const endScreen = document.getElementById("endScreen");
-      const bgVideo = document.getElementById("bgVideo");
-
-      const hitTexts = [];
-
-      // Audio visualizer
-      let audioCtx, analyser, source, dataArray;
-      function setupAudioVisualizer() {
-        if (!music.src) return;
-        if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          source = audioCtx.createMediaElementSource(music);
-          analyser = audioCtx.createAnalyser();
-          source.connect(analyser);
-          analyser.connect(audioCtx.destination);
-          analyser.fftSize = 64;
-          dataArray = new Uint8Array(analyser.frequencyBinCount);
-        }
+      // 🔊 AUDIO UNLOCK
+      let unlocked = false;
+      function unlockAudio() {
+        if (unlocked) return;
+        let ctx2 = new (window.AudioContext || window.webkitAudioContext)();
+        ctx2.resume();
+        unlocked = true;
       }
-      function getFreqData() {
-        if (!analyser) return [0, 0, 0, 0];
-        analyser.getByteFrequencyData(dataArray);
-        let out = [];
-        for (let i = 0; i < 4; i++) {
-          let start = Math.floor((i * dataArray.length) / 4);
-          let end = Math.floor(((i + 1) * dataArray.length) / 4);
-          let sum = 0;
-          for (let j = start; j < end; j++) sum += dataArray[j];
-          out[i] = sum / (end - start) / 255;
-        }
-        return out;
-      }
-      music.addEventListener("play", () => {
-        if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
-        setupAudioVisualizer();
-      });
+      addEventListener("touchstart", unlockAudio, { once: true });
+      addEventListener("click", unlockAudio, { once: true });
 
-      // DEMO SONG
+      // 🎵 DEMO SONG
       document.getElementById("demoBtn").onclick = () => {
-        menu.style.display = "none";
-        music.pause();
+        document.getElementById("menu").style.display = "none";
+
         notes = [];
         score = 0;
         combo = 0;
-        hits = 0;
+
+        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let gain = audioCtx.createGain();
+        gain.connect(audioCtx.destination);
+
         let t = 0;
-        for (let i = 0; i < 120; i++) {
+        for (let i = 0; i < 100; i++) {
           notes.push({ lane: i % 4, time: t, hit: false });
-          t += 0.6 * sensitivity; // increased spacing
+
+          let osc = audioCtx.createOscillator();
+          osc.frequency.value = 200 + Math.random() * 300;
+          osc.connect(gain);
+          osc.start(audioCtx.currentTime + t);
+          osc.stop(audioCtx.currentTime + t + 0.05);
+
+          t += 0.6;
         }
-        total = notes.length;
+
         songDuration = t;
         startTime = performance.now() / 1000;
         gameStarted = true;
         loop();
       };
 
-      // MP3 LOAD
-      document.getElementById("audioBtn").onclick = () => {
+      // 🎥 VIDEO
+      const bgVideo = document.getElementById("bgVideo");
+      document.getElementById("videoBtn").onclick = () => {
         let input = document.createElement("input");
         input.type = "file";
-        input.accept = "audio/*";
-        input.onchange = async (e) => {
-          let file = e.target.files[0];
-          if (!file) return;
-          menu.style.display = "none";
-          music.src = URL.createObjectURL(file);
-          await music.play().catch(() => {});
-          let audioCtxTmp = new AudioContext();
-          const arrayBuffer = await file.arrayBuffer();
-          const decoded = await audioCtxTmp.decodeAudioData(arrayBuffer);
-          notes = [];
-          score = 0;
-          combo = 0;
-          hits = 0;
-          let data = decoded.getChannelData(0);
-          let sr = decoded.sampleRate,
-            last = 0;
-          for (let i = 0; i < data.length; i += 1024) {
-            let sum = 0;
-            for (let j = 0; j < 1024; j++) sum += Math.abs(data[i + j] || 0);
-            let amp = sum / 1024;
-            if (amp > 0.1) {
-              let t = i / sr;
-              if (t - last > 0.25 * sensitivity) {
-                // dynamic spacing
-                notes.push({
-                  lane: Math.floor(Math.random() * 4),
-                  time: t,
-                  hit: false,
-                });
-                last = t;
-              }
-            }
-          }
-          total = notes.length;
-          songDuration = decoded.duration;
-          startTime = performance.now() / 1000;
-          gameStarted = true;
-          loop();
-        };
-        input.click();
-      };
-
-      // VIDEO LOAD
-      document.getElementById("videoBtn").onclick = () => {
-        const input = document.createElement("input");
-        input.type = "file";
         input.accept = "video/*";
-
         input.onchange = (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          const url = URL.createObjectURL(file);
-          bgVideo.src = url;
+          bgVideo.src = URL.createObjectURL(e.target.files[0]);
           bgVideo.style.display = "block";
           bgVideo.play();
         };
         input.click();
       };
 
-      // DRAW
-      function draw() {
-        // 🌌 Reactive background if no video
-        if (bgVideo.style.display !== "block") {
-          let time = performance.now() * 0.002;
-          let gradient = ctx.createLinearGradient(0, 0, 0, innerHeight);
-          gradient.addColorStop(0, `hsl(${(time * 40) % 360},70%,10%)`);
-          gradient.addColorStop(1, `hsl(${(time * 40 + 60) % 360},70%,5%)`);
-          ctx.fillStyle = gradient;
-          ctx.fillRect(0, 0, innerWidth, innerHeight);
-
-          ctx.beginPath();
-          for (let x = 0; x < innerWidth; x += 10) {
-            let y = Math.sin(x * 0.01 + time * 4) * 20 + innerHeight / 2;
-            ctx.lineTo(x, y);
-          }
-          ctx.strokeStyle = "rgba(0,255,255,0.2)";
-          ctx.lineWidth = 3;
-          ctx.stroke();
-        }
-
-        let time = performance.now() / 1000 - startTime;
-        let freqData = getFreqData();
-
-        // lanes + hit zone (bigger visually)
-        for (let i = 0; i < 4; i++) {
-          let h = (freqData[i] || 0) * 200;
-          ctx.fillStyle = `rgba(0,100,255,0.3)`;
-          ctx.fillRect(i * laneW, 0, laneW, innerHeight - 140 + h);
-          ctx.fillStyle = "rgba(0,255,255,0.15)";
-          ctx.fillRect(i * laneW, innerHeight - 140, laneW, 120); // bigger hit zone
-          ctx.strokeStyle = "#0ff";
-          ctx.lineWidth = 2;
-          ctx.strokeRect(i * laneW, innerHeight - 140, laneW, 120);
-        }
-
-        // notes
-        if (gameStarted) {
-          notes.forEach((n) => {
-            if (n.hit) return;
-            let y = c.height - 140 - (n.time - time) * SPEED;
-            if (y < -50 || y > c.height) return;
-            ctx.shadowColor = "#0ff";
-            ctx.shadowBlur = 15;
-            ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
-            ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 50);
-            ctx.shadowBlur = 0;
+      // 🎨 PARTICLES
+      function spawnParticles(x, y) {
+        for (let i = 0; i < 10; i++) {
+          particles.push({
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 5,
+            vy: (Math.random() - 0.5) * 5,
+            life: 1,
           });
         }
-
-        // hit texts
-        hitTexts.forEach((ht) => {
-          ctx.fillStyle = ht.color;
-          ctx.font = "30px Arial";
-          ctx.fillText(ht.text, ht.x, ht.y);
-          ht.y -= 1.5;
-          ht.alpha -= 0.02;
-          ctx.globalAlpha = ht.alpha;
-          ctx.globalAlpha = 1;
-        });
       }
 
-      // UPDATE
-      function update() {
-        let time = performance.now() / 1000 - startTime;
-        notes.forEach((n) => {
-          if (!n.hit && time - n.time > 0.4 * sensitivity) {
-            n.hit = true;
-            combo = 0;
-            addHitText("MISS", n.lane);
-          }
-        });
-        if (time > songDuration + 1) {
-          showEnd();
-        }
-        updateRank();
-      }
-
-      // HIT
+      // 🎮 HIT
       function hit(l) {
         let time = performance.now() / 1000 - startTime;
         let best = null,
           bd = 999;
+
         notes.forEach((n) => {
           if (n.hit || n.lane !== l) return;
           let d = Math.abs(n.time - time);
@@ -399,109 +180,95 @@
             best = n;
           }
         });
+
         if (!best) {
           combo = 0;
-          addHitText("MISS", l);
           return;
         }
-        let result = "PERFECT";
-        if (bd < 0.12 * sensitivity) {
+
+        if (bd < 0.12) {
           score += 300;
-          hits++;
-        } else if (bd < 0.18 * sensitivity) {
-          score += 200;
-          hits++;
-          result = "GREAT";
-        } else if (bd < 0.25 * sensitivity) {
-          score += 100;
-          hits++;
-          result = "FAIR";
-        } else if (bd < 0.3 * sensitivity) {
-          score += 50;
-          hits++;
-          result = "BAD";
+          combo++;
+          spawnParticles(l * laneW + laneW / 2, innerHeight - 140);
+        } else if (bd < 0.2) {
+          score += 150;
+          combo++;
         } else {
           combo = 0;
-          addHitText("MISS", l);
-          return;
         }
+
         best.hit = true;
-        combo++;
-        scoreEl.innerText = score;
-        comboEl.innerText = combo;
-        addHitText(result, l);
+        document.getElementById("score").innerText = score;
+        document.getElementById("combo").innerText = combo;
       }
-      function addHitText(text, lane) {
-        hitTexts.push({
-          text: text,
-          color: "#0ff",
-          x: lane * laneW + laneW / 2 - 30,
-          y: c.height - 150,
-          alpha: 1,
+
+      // 📱 TOUCH (FULL SCREEN)
+      c.addEventListener(
+        "touchstart",
+        (e) => {
+          let x = e.touches[0].clientX;
+          let lane = Math.floor(x / (innerWidth / 4));
+          hit(lane);
+        },
+        { passive: false },
+      );
+
+      // ⌨️ KEYS
+      addEventListener("keydown", (e) => {
+        let map = { a: 0, s: 1, d: 2, f: 3 };
+        if (map[e.key] != null) hit(map[e.key]);
+      });
+
+      // 🎨 DRAW
+      function draw() {
+        ctx.clearRect(0, 0, c.width, c.height);
+
+        // 🌌 BACKGROUND
+        let t = performance.now() * 0.002;
+        ctx.fillStyle = `hsl(${(t * 40) % 360},50%,8%)`;
+        ctx.fillRect(0, 0, c.width, c.height);
+
+        // lanes
+        for (let i = 0; i < 4; i++) {
+          ctx.fillStyle = "rgba(0,200,255,0.1)";
+          ctx.fillRect(i * laneW, 0, laneW, c.height);
+
+          // hit zone
+          ctx.fillStyle = "rgba(0,255,255,0.2)";
+          ctx.fillRect(i * laneW, c.height - 140, laneW, 120);
+        }
+
+        // notes
+        let time = performance.now() / 1000 - startTime;
+        notes.forEach((n) => {
+          if (n.hit) return;
+          let y = c.height - 140 - (n.time - time) * SPEED;
+          ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
+          ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 50);
         });
-      }
 
-      // RANK
-      function updateRank() {
-        let acc = hits / Math.max(1, total);
-        accEl.innerText = Math.round(acc * 100) + "%";
-        let r = "D";
-        if (acc > 0.95) r = "S";
-        else if (acc > 0.85) r = "A";
-        else if (acc > 0.7) r = "B";
-        else if (acc > 0.5) r = "C";
-        rankEl.innerText = r;
-      }
-
-      // END SCREEN
-      function showEnd() {
-        gameStarted = false;
-        let acc = hits / Math.max(1, total);
-        let rank = rankEl.innerText;
-        document.getElementById("finalScore").innerText = "Score: " + score;
-        document.getElementById("finalAcc").innerText =
-          "Accuracy: " + Math.round(acc * 100) + "%";
-        document.getElementById("finalRank").innerText = "Rank: " + rank;
-        endScreen.style.opacity = 1;
-        endScreen.style.pointerEvents = "auto";
+        // particles
+        particles.forEach((p) => {
+          ctx.fillStyle = "#0ff";
+          ctx.fillRect(p.x, p.y, 4, 4);
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life -= 0.02;
+        });
+        particles = particles.filter((p) => p.life > 0);
       }
 
       // LOOP
+      function update() {
+        let time = performance.now() / 1000 - startTime;
+        if (time > songDuration) gameStarted = false;
+      }
+
       function loop() {
         draw();
         if (gameStarted) update();
         requestAnimationFrame(loop);
       }
-
-      // CONTROLS (PC + Mobile)
-      const keys = {
-        A: 0,
-        W: 1,
-        S: 2,
-        D: 3,
-        Q: 0,
-        W: 1,
-        E: 2,
-        R: 3,
-        U: 0,
-        I: 1,
-        O: 2,
-        P: 3,
-      };
-      addEventListener("keydown", (e) => {
-        let l = keys[e.key.toUpperCase()];
-        if (l != null) hit(l);
-      });
-      document.querySelectorAll(".touchBtn").forEach((b) => {
-        b.addEventListener(
-          "touchstart",
-          (e) => {
-            e.preventDefault();
-            hit(parseInt(b.dataset.lane));
-          },
-          { passive: false },
-        );
-      });
     </script>
   </body>
 </html>
