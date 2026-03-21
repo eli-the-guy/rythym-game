@@ -3,184 +3,102 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AAA Rhythm Game v3</title>
+    <title>AAA Rhythm Game</title>
+
     <style>
       body {
         margin: 0;
-        background: #0a0a0a;
+        background: #000;
         color: white;
         font-family: Arial;
         overflow: hidden;
       }
-      #bgVideo {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: -1;
-        pointer-events: none;
-        filter: brightness(0.25);
-        object-fit: cover;
-      }
-      #c {
-        position: absolute;
-        top: 0;
-        left: 0;
-        z-index: 1;
-      }
+
       #menu {
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
         text-align: center;
-        z-index: 20;
+        z-index: 5;
       }
-      #menu button,
-      input {
+
+      button {
         padding: 12px 20px;
         margin: 6px;
         font-size: 16px;
         border-radius: 10px;
         border: none;
-        outline: none;
       }
-      #ui {
+
+      #hud {
         position: absolute;
         top: 20px;
         left: 50%;
         transform: translateX(-50%);
-        z-index: 2;
-        pointer-events: none;
-      }
-      #hud {
         display: flex;
         gap: 30px;
         background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(15px);
         padding: 15px 25px;
         border-radius: 20px;
-        box-shadow: 0 0 20px #0ff;
+        z-index: 3;
       }
-      #score,
-      #combo,
-      #rank {
-        font-weight: bold;
-      }
-      #score {
-        font-size: 28px;
-        background: linear-gradient(90deg, #0ff, #0f8);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
+
       #combo {
         font-size: 40px;
         color: #0ff;
-        text-shadow: 0 0 15px #0ff;
       }
       #rank {
-        font-size: 36px;
+        font-size: 30px;
         color: #ff0;
-        text-shadow: 0 0 20px #ff0;
       }
+
       .touchBtn {
         position: absolute;
         bottom: 0;
         width: 25%;
         height: 35vh;
         background: rgba(0, 255, 255, 0.15);
-        border: 1px solid #0ff;
         z-index: 2;
       }
-      #overlay {
-        position: absolute;
+
+      #bgVideo {
+        position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-size: 50px;
-        background: rgba(0, 0, 0, 0.95);
-        opacity: 0;
+        object-fit: cover;
+        z-index: -2;
+        filter: brightness(0.3);
         pointer-events: none;
-        transition: 0.3s;
-        z-index: 3;
-        color: #0ff;
-        text-shadow: 0 0 20px #0ff;
+        display: none;
       }
-      #sensitivityWrapper {
+
+      #videoBtn {
         position: absolute;
-        bottom: 15px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 4;
-        color: white;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 16px;
-      }
-      .indicator {
-        position: absolute;
-        z-index: 3;
-        font-size: 32px;
-        font-weight: bold;
-        text-shadow: 0 0 15px #0ff;
-        pointer-events: none;
-        opacity: 1;
-        transition: all 0.5s ease;
+        top: 10px;
+        right: 10px;
+        z-index: 6;
       }
     </style>
   </head>
+
   <body>
-    <iframe
-      id="bgVideo"
-      src="https://www.youtube.com/embed/0VKY7Moy4so?start=236&autoplay=1&loop=1&playlist=0VKY7Moy4so&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3"
-      frameborder="0"
-      allow="autoplay"
-      allowfullscreen
-    ></iframe>
-
     <div id="menu">
-      <h2>AAA MODE v3</h2>
-      <button id="fileBtn">Upload Song</button><br />
-      <input id="urlInput" placeholder="Audio / Drive link" /><br />
-      <button onclick="loadURL()">Load URL</button>
+      <h2>AAA MODE</h2>
+      <button id="demoBtn">▶ Play Original Song</button>
     </div>
 
-    <div id="overlay"></div>
+    <button id="videoBtn">🎥 Load Video</button>
 
-    <div id="ui">
-      <div id="hud">
-        <div>
-          SCORE
-          <div id="score">0</div>
-        </div>
-        <div>
-          COMBO
-          <div id="combo">0</div>
-        </div>
-        <div>
-          RANK
-          <div id="rank">D</div>
-        </div>
-      </div>
-    </div>
+    <video id="bgVideo" autoplay loop muted playsinline></video>
 
-    <div id="sensitivityWrapper">
-      <label>Sensitivity: </label>
-      <input
-        type="range"
-        id="sensitivity"
-        min="0.05"
-        max="0.5"
-        step="0.01"
-        value="0.12"
-      />
-      <span id="sensVal">0.12</span>
+    <div id="hud">
+      <div>Score <span id="score">0</span></div>
+      <div id="combo">0</div>
+      <div>Rank <span id="rank">D</span></div>
+      <div>Acc <span id="acc">100%</span></div>
     </div>
 
     <div class="touchBtn" style="left: 0" data-lane="0"></div>
@@ -189,7 +107,6 @@
     <div class="touchBtn" style="left: 75%" data-lane="3"></div>
 
     <canvas id="c"></canvas>
-    <audio id="music" playsinline></audio>
 
     <script>
       const c = document.getElementById("c"),
@@ -197,21 +114,261 @@
       c.width = innerWidth;
       c.height = innerHeight;
 
-      const music = document.getElementById("music");
-      const overlay = document.getElementById("overlay");
-      let audioCtx, analyser, dataArray;
+      const bgVideo = document.getElementById("bgVideo");
+
       let notes = [],
         score = 0,
         combo = 0,
-        gameStarted = false,
-        laneGlow = [0, 0, 0, 0];
-      let startTime = 0;
-      let indicators = [];
+        hits = 0,
+        total = 0;
+      let startTime = 0,
+        gameStarted = false;
 
-      const laneW = c.width / 4;
-      let SPEED = 500,
-        PERF = parseFloat(document.getElementById("sensitivity").value),
-        GOOD = 0.25;
+      const laneW = innerWidth / 4;
+      const SPEED = 500;
+
+      const scoreEl = document.getElementById("score");
+      const comboEl = document.getElementById("combo");
+      const rankEl = document.getElementById("rank");
+      const accEl = document.getElementById("acc");
+
+      // 🎥 VIDEO UPLOAD
+      document.getElementById("videoBtn").onclick = () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "video/*";
+
+        input.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const url = URL.createObjectURL(file);
+          bgVideo.src = url;
+          bgVideo.style.display = "block";
+          bgVideo.play();
+        };
+
+        input.click();
+      };
+
+      // 🎵 START SONG
+      document.getElementById("demoBtn").onclick = async () => {
+        await startFullSong();
+      };
+
+      async function startFullSong() {
+        const ctxAudio = new (
+          window.AudioContext || window.webkitAudioContext
+        )();
+        const master = ctxAudio.createGain();
+        master.gain.value = 0.5;
+        master.connect(ctxAudio.destination);
+
+        notes = [];
+        score = 0;
+        combo = 0;
+        hits = 0;
+
+        const BPM = 140;
+        const beat = 60 / BPM;
+        const startDelay = 1;
+
+        let t = startDelay;
+
+        function play(freq, time, len, type = "square", vol = 0.2) {
+          let o = ctxAudio.createOscillator();
+          let g = ctxAudio.createGain();
+          o.type = type;
+          o.frequency.value = freq;
+
+          g.gain.setValueAtTime(0, time);
+          g.gain.linearRampToValueAtTime(vol, time + 0.01);
+          g.gain.linearRampToValueAtTime(0, time + len);
+
+          o.connect(g);
+          g.connect(master);
+          o.start(time);
+          o.stop(time + len);
+        }
+
+        function spawn(lane, time) {
+          notes.push({ lane: lane, time: time - startDelay, hit: false });
+        }
+
+        // INTRO
+        for (let i = 0; i < 16; i++) {
+          let lane = i % 4;
+          play(220 + lane * 60, t, beat);
+          spawn(lane, t);
+          t += beat;
+        }
+
+        // BUILD
+        for (let i = 0; i < 16; i++) {
+          let lane = Math.floor(Math.random() * 4);
+          play(300 + lane * 80, t, beat * 0.8);
+          spawn(lane, t);
+          t += beat * 0.75;
+        }
+
+        // DROP
+        for (let i = 0; i < 48; i++) {
+          let lane = i % 4;
+
+          play(400 + lane * 120, t, beat * 0.5, "sawtooth", 0.25);
+          play(100, t, beat * 0.5, "square", 0.3);
+          play(60, t, 0.1, "sine", 0.4);
+          if (i % 2 === 0) play(180, t, 0.05, "triangle", 0.2);
+
+          spawn(lane, t);
+          t += beat * 0.5;
+        }
+
+        // OUTRO
+        for (let i = 0; i < 16; i++) {
+          let lane = Math.floor(Math.random() * 4);
+          play(200 + lane * 50, t, beat);
+          spawn(lane, t);
+          t += beat;
+        }
+
+        total = notes.length;
+
+        document.getElementById("menu").style.display = "none";
+        startTime = performance.now() / 1000;
+        gameStarted = true;
+
+        loop();
+      }
+
+      // DRAW
+      function draw() {
+        // 🌌 reactive background if no video
+        if (bgVideo.style.display !== "block") {
+          let time = performance.now() * 0.002;
+
+          let grad = ctx.createLinearGradient(0, 0, 0, innerHeight);
+          grad.addColorStop(0, `hsl(${(time * 40) % 360},70%,10%)`);
+          grad.addColorStop(1, `hsl(${(time * 40 + 60) % 360},70%,5%)`);
+
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, innerWidth, innerHeight);
+
+          ctx.beginPath();
+          for (let x = 0; x < innerWidth; x += 10) {
+            let y = Math.sin(x * 0.01 + time * 4) * 20 + innerHeight / 2;
+            ctx.lineTo(x, y);
+          }
+          ctx.strokeStyle = "rgba(0,255,255,0.2)";
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        } else {
+          ctx.clearRect(0, 0, innerWidth, innerHeight);
+        }
+
+        // lanes
+        for (let i = 0; i < 4; i++) {
+          ctx.fillStyle = "rgba(80,80,150,0.3)";
+          ctx.fillRect(i * laneW, 0, laneW, innerHeight);
+        }
+
+        // hit line
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, innerHeight - 120, innerWidth, 5);
+
+        // notes
+        if (gameStarted) {
+          let time = performance.now() / 1000 - startTime;
+          notes.forEach((n) => {
+            if (n.hit) return;
+            let y = innerHeight - 120 - (n.time - time) * SPEED;
+            if (y < -50 || y > innerHeight) return;
+
+            ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
+            ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 50);
+          });
+        }
+      }
+
+      // UPDATE
+      function update() {
+        let time = performance.now() / 1000 - startTime;
+
+        notes.forEach((n) => {
+          if (!n.hit && time - n.time > 0.3) {
+            n.hit = true;
+            combo = 0;
+          }
+        });
+
+        updateRank();
+      }
+
+      // HIT
+      function hit(l) {
+        let time = performance.now() / 1000 - startTime;
+
+        let best = null,
+          bd = 999;
+        notes.forEach((n) => {
+          if (n.hit || n.lane !== l) return;
+          let d = Math.abs(n.time - time);
+          if (d < bd) {
+            bd = d;
+            best = n;
+          }
+        });
+
+        if (!best) {
+          combo = 0;
+          return;
+        }
+
+        if (bd < 0.08) {
+          score += 300;
+          hits++;
+        } else if (bd < 0.14) {
+          score += 200;
+          hits++;
+        } else if (bd < 0.22) {
+          score += 100;
+          hits++;
+        } else if (bd < 0.3) {
+          score += 50;
+          hits++;
+        } else {
+          combo = 0;
+          return;
+        }
+
+        best.hit = true;
+        combo++;
+
+        scoreEl.innerText = score;
+        comboEl.innerText = combo;
+      }
+
+      // RANK
+      function updateRank() {
+        let acc = hits / Math.max(1, total);
+        accEl.innerText = Math.round(acc * 100) + "%";
+
+        let r = "D";
+        if (acc > 0.95) r = "S";
+        else if (acc > 0.85) r = "A";
+        else if (acc > 0.7) r = "B";
+        else if (acc > 0.5) r = "C";
+
+        rankEl.innerText = r;
+      }
+
+      // LOOP
+      function loop() {
+        draw();
+        if (gameStarted) update();
+        requestAnimationFrame(loop);
+      }
+
+      // CONTROLS
       const keys = {
         A: 0,
         W: 1,
@@ -226,205 +383,11 @@
         O: 2,
         P: 3,
       };
-
-      const scoreEl = document.getElementById("score");
-      const comboEl = document.getElementById("combo");
-      const rankEl = document.getElementById("rank");
-      const sensSlider = document.getElementById("sensitivity");
-      const sensVal = document.getElementById("sensVal");
-
-      sensSlider.addEventListener("input", () => {
-        PERF = parseFloat(sensSlider.value);
-        sensVal.innerText = PERF.toFixed(2);
-      });
-
-      async function unlock() {
-        if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          analyser = audioCtx.createAnalyser();
-          analyser.fftSize = 64;
-          dataArray = new Uint8Array(analyser.frequencyBinCount);
-        }
-        if (audioCtx.state === "suspended") await audioCtx.resume();
-      }
-
-      function showOverlay(t) {
-        overlay.innerText = t;
-        overlay.style.opacity = 1;
-        overlay.style.pointerEvents = "auto";
-      }
-      function hideOverlay() {
-        overlay.style.opacity = 0;
-        overlay.style.pointerEvents = "none";
-      }
-
-      async function countdown() {
-        for (let t of ["Ready", "3", "2", "1", "GO"]) {
-          showOverlay(t);
-          await new Promise((r) => setTimeout(r, 600));
-        }
-        hideOverlay();
-        startTime = performance.now() / 1000;
-        gameStarted = true;
-      }
-
-      function detectBeats(audioBuffer) {
-        const data = audioBuffer.getChannelData(0);
-        const sr = audioBuffer.sampleRate;
-        let beats = [],
-          size = 2048,
-          lastTime = 0;
-        for (let i = 0; i < data.length; i += size) {
-          let sum = 0;
-          for (let j = 0; j < size; j++) {
-            sum += Math.pow(data[i + j] || 0, 2);
-          }
-          let rms = Math.sqrt(sum / size);
-          if (rms > 0.15) {
-            let t = i / sr;
-            if (t - lastTime > 0.2) {
-              beats.push(t);
-              lastTime = t;
-            }
-          }
-        }
-        return beats;
-      }
-
-      function spawn(beats) {
-        notes = beats.map((t) => ({
-          lane: Math.floor(Math.random() * 4),
-          time: t,
-          hit: false,
-        }));
-      }
-
-      function draw() {
-        ctx.clearRect(0, 0, innerWidth, innerHeight);
-
-        // draw lanes
-        for (let i = 0; i < 4; i++) {
-          ctx.fillStyle = laneGlow[i]
-            ? "rgba(0,255,255,0.4)"
-            : "rgba(80,80,150,0.3)";
-          ctx.fillRect((i * innerWidth) / 4, 0, innerWidth / 4, innerHeight);
-        }
-
-        // hit line
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(0, innerHeight - 120, innerWidth, 5);
-
-        // notes
-        if (gameStarted) {
-          let time = performance.now() / 1000 - startTime;
-          notes.forEach((n) => {
-            if (n.hit) return;
-            let y = innerHeight - 120 - (n.time - time) * SPEED;
-            if (y + 20 < 0 || y > innerHeight) return;
-            let x = (n.lane * innerWidth) / 4 + 20;
-            ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
-            ctx.shadowColor = "#0ff";
-            ctx.shadowBlur = 15;
-            ctx.fillRect(x, y, innerWidth / 4 - 40, 20);
-            ctx.shadowBlur = 0;
-          });
-        }
-
-        // indicators
-        indicators.forEach((ind) => {
-          ind.y -= 1.5;
-          ind.opacity -= 0.02;
-          ctx.font = "32px Arial";
-          ctx.fillStyle = `rgba(0,255,255,${ind.opacity})`;
-          ctx.fillText(ind.text, ind.x, ind.y);
-        });
-        indicators = indicators.filter((i) => i.opacity > 0);
-      }
-
-      function update() {
-        notes.forEach((n) => {
-          if (
-            !n.hit &&
-            innerHeight -
-              120 -
-              (n.time - (performance.now() / 1000 - startTime)) * SPEED >
-              innerHeight
-          ) {
-            n.hit = true;
-            combo = 0;
-            addIndicator("Miss", n.lane);
-          }
-        });
-        updateRank();
-      }
-
-      function addIndicator(text, lane) {
-        indicators.push({
-          text: text,
-          x: (lane * innerWidth) / 4 + 50,
-          y: innerHeight - 120,
-          opacity: 1,
-        });
-      }
-
-      function hit(l) {
-        laneGlow[l] = 1;
-        setTimeout(() => (laneGlow[l] = 0), 100);
-        let best = null,
-          bd = 999;
-        notes.forEach((n) => {
-          if (n.hit || n.lane !== l) return;
-          let d = Math.abs(n.time - (performance.now() / 1000 - startTime));
-          if (d < bd) {
-            bd = d;
-            best = n;
-          }
-        });
-        if (!best) {
-          combo = 0;
-          addIndicator("Miss", l);
-          return;
-        }
-
-        if (bd <= PERF) {
-          combo++;
-          score += 100 * combo;
-          best.hit = true;
-          addIndicator("Perfect", l);
-        } else if (bd <= GOOD) {
-          combo++;
-          score += 70 * combo;
-          best.hit = true;
-          addIndicator("Good", l);
-        } else {
-          combo = 0;
-          addIndicator("Bad", l);
-        }
-
-        scoreEl.innerText = score;
-        comboEl.innerText = combo;
-      }
-
-      function updateRank() {
-        let acc = combo / Math.max(1, notes.length);
-        let r = "D";
-        if (acc > 0.9) r = "S";
-        else if (acc > 0.75) r = "A";
-        else if (acc > 0.6) r = "B";
-        else if (acc > 0.45) r = "C";
-        rankEl.innerText = r;
-      }
-
-      function loop() {
-        draw();
-        if (gameStarted) update();
-        requestAnimationFrame(loop);
-      }
-
       addEventListener("keydown", (e) => {
         let l = keys[e.key.toUpperCase()];
         if (l != null) hit(l);
       });
+
       document.querySelectorAll(".touchBtn").forEach((b) => {
         b.addEventListener(
           "touchstart",
@@ -435,51 +398,6 @@
           { passive: false },
         );
       });
-
-      async function start(buf, src) {
-        await unlock();
-        const audioSource = audioCtx.createMediaElementSource(music);
-        audioSource.connect(analyser);
-        analyser.connect(audioCtx.destination);
-        const decoded = await audioCtx.decodeAudioData(buf.slice(0));
-        spawn(detectBeats(decoded));
-        music.src = src;
-        menu.style.display = "none";
-        loop();
-        let p = music.play();
-        if (p) {
-          p.then(() => countdown()).catch(() => {
-            showOverlay("Tap to Start");
-            overlay.onclick = async () => {
-              await music.play();
-              await countdown();
-            };
-          });
-        }
-      }
-
-      fileBtn.onclick = () => {
-        let i = document.createElement("input");
-        i.type = "file";
-        i.accept = "audio/*";
-        i.onchange = async (e) => {
-          let f = e.target.files[0];
-          start(await f.arrayBuffer(), URL.createObjectURL(f));
-        };
-        i.click();
-      };
-
-      async function loadURL() {
-        try {
-          let u = urlInput.value.trim();
-          let m = u.match(/\/d\/([a-zA-Z0-9_-]+)/);
-          if (m) u = `https://drive.google.com/uc?export=download&id=${m[1]}`;
-          let r = await fetch(u);
-          start(await r.arrayBuffer(), u);
-        } catch {
-          alert("URL failed");
-        }
-      }
     </script>
   </body>
 </html>
