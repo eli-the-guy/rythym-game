@@ -408,5 +408,102 @@
         );
       });
     </script>
+    <!-- Hit area now extends to top -->
+    <script>
+      // DRAW updated for full lane hit area + audio visualizer
+      function draw() {
+        ctx.clearRect(0, 0, c.width, c.height);
+
+        // lanes + visualizer
+        if (gameStarted && music.src) {
+          let time = performance.now() / 1000 - startTime;
+          let freqData = getFreqData();
+          for (let i = 0; i < 4; i++) {
+            // reactive lane
+            let h = (freqData[i] || 0) * 200; // visualizer height
+            ctx.fillStyle = `rgba(0,100,255,0.3)`;
+            ctx.fillRect(i * laneW, 0, laneW, c.height - 140 + h);
+
+            // hit area now full lane
+            ctx.fillStyle = "rgba(0,255,255,0.15)";
+            ctx.fillRect(i * laneW, 0, laneW, c.height - 140);
+            ctx.strokeStyle = "#0ff";
+            ctx.strokeRect(i * laneW, 0, laneW, c.height - 140);
+          }
+        } else {
+          // normal lanes if no audio
+          for (let i = 0; i < 4; i++) {
+            ctx.fillStyle = "rgba(80,80,150,0.3)";
+            ctx.fillRect(i * laneW, 0, laneW, c.height - 140);
+            ctx.fillStyle = "rgba(0,255,255,0.15)";
+            ctx.fillRect(i * laneW, 0, laneW, c.height - 140);
+            ctx.strokeStyle = "#0ff";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(i * laneW, 0, laneW, c.height - 140);
+          }
+        }
+
+        // notes
+        if (gameStarted) {
+          let time = performance.now() / 1000 - startTime;
+          notes.forEach((n) => {
+            if (n.hit) return;
+            let y = c.height - 140 - (n.time - time) * SPEED;
+            if (y < -50 || y > c.height) return;
+            ctx.shadowColor = "#0ff";
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
+            ctx.fillRect(n.lane * laneW + 20, y, laneW - 40, 50);
+            ctx.shadowBlur = 0;
+          });
+        }
+
+        // hit texts
+        hitTexts.forEach((ht, i) => {
+          ctx.fillStyle = ht.color;
+          ctx.font = "30px Arial";
+          ctx.fillText(ht.text, ht.x, ht.y);
+          ht.y -= 1.5;
+          ht.alpha -= 0.02;
+          ctx.globalAlpha = ht.alpha;
+          ctx.globalAlpha = 1;
+        });
+        hitTexts.filter((ht) => ht.alpha > 0);
+      }
+
+      // Audio visualizer setup
+      let audioCtx, analyser, source, dataArray;
+      function setupAudioVisualizer() {
+        if (!music.src) return;
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          source = audioCtx.createMediaElementSource(music);
+          analyser = audioCtx.createAnalyser();
+          source.connect(analyser);
+          analyser.connect(audioCtx.destination);
+          analyser.fftSize = 64;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+      }
+      function getFreqData() {
+        if (!analyser) return [0, 0, 0, 0];
+        analyser.getByteFrequencyData(dataArray);
+        let out = [];
+        for (let i = 0; i < 4; i++) {
+          let start = Math.floor((i * dataArray.length) / 4);
+          let end = Math.floor(((i + 1) * dataArray.length) / 4);
+          let sum = 0;
+          for (let j = start; j < end; j++) sum += dataArray[j];
+          out[i] = sum / (end - start) / 255; // normalize 0-1
+        }
+        return out;
+      }
+
+      // Call visualizer when song plays
+      music.addEventListener("play", () => {
+        if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+        setupAudioVisualizer();
+      });
+    </script>
   </body>
 </html>
