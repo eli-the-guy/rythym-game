@@ -52,6 +52,10 @@
         font-size: 30px;
         color: #ff0;
       }
+      #acc {
+        font-size: 30px;
+        color: #0f0;
+      }
       #sensitivityControl {
         margin-top: 10px;
       }
@@ -59,17 +63,18 @@
         position: absolute;
         bottom: 0;
         width: 25%;
-        height: 60px;
+        height: 80px;
         background: rgba(0, 255, 255, 0.05);
       }
       #perfectLine {
         position: absolute;
         width: 100%;
-        height: 4px;
+        height: 12px;
         background: #0ff;
         bottom: 140px;
         z-index: 2;
         opacity: 0.5;
+        border-radius: 6px;
       }
       #endScreen {
         position: absolute;
@@ -230,7 +235,7 @@
         let t = 0;
         for (let i = 0; i < 120; i++) {
           notes.push({ lane: i % 4, time: t, hit: false });
-          t += 0.4 * sensitivity;
+          t += 0.6 * sensitivity; // increased spacing
         }
         total = notes.length;
         songDuration = t;
@@ -266,7 +271,8 @@
             let amp = sum / 1024;
             if (amp > 0.1) {
               let t = i / sr;
-              if (t - last > 0.15) {
+              if (t - last > 0.25 * sensitivity) {
+                // dynamic spacing
                 notes.push({
                   lane: Math.floor(Math.random() * 4),
                   time: t,
@@ -326,15 +332,16 @@
         let time = performance.now() / 1000 - startTime;
         let freqData = getFreqData();
 
-        // lanes + hit zone
+        // lanes + hit zone (bigger visually)
         for (let i = 0; i < 4; i++) {
           let h = (freqData[i] || 0) * 200;
           ctx.fillStyle = `rgba(0,100,255,0.3)`;
           ctx.fillRect(i * laneW, 0, laneW, innerHeight - 140 + h);
           ctx.fillStyle = "rgba(0,255,255,0.15)";
-          ctx.fillRect(i * laneW, innerHeight - 140, laneW, 60);
+          ctx.fillRect(i * laneW, innerHeight - 140, laneW, 120); // bigger hit zone
           ctx.strokeStyle = "#0ff";
-          ctx.strokeRect(i * laneW, innerHeight - 140, laneW, 60);
+          ctx.lineWidth = 2;
+          ctx.strokeRect(i * laneW, innerHeight - 140, laneW, 120);
         }
 
         // notes
@@ -398,14 +405,14 @@
           return;
         }
         let result = "PERFECT";
-        if (bd < 0.08 * sensitivity) {
+        if (bd < 0.12 * sensitivity) {
           score += 300;
           hits++;
-        } else if (bd < 0.14 * sensitivity) {
+        } else if (bd < 0.18 * sensitivity) {
           score += 200;
           hits++;
           result = "GREAT";
-        } else if (bd < 0.22 * sensitivity) {
+        } else if (bd < 0.25 * sensitivity) {
           score += 100;
           hits++;
           result = "FAIR";
@@ -466,7 +473,7 @@
         requestAnimationFrame(loop);
       }
 
-      // CONTROLS
+      // CONTROLS (PC + Mobile)
       const keys = {
         A: 0,
         W: 1,
