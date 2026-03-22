@@ -10,6 +10,7 @@
         overflow: hidden;
         font-family: Arial;
         color: white;
+        position: relative;
       }
       #menu {
         position: absolute;
@@ -17,7 +18,7 @@
         left: 50%;
         transform: translate(-50%, -50%);
         text-align: center;
-        z-index: 10;
+        z-index: 20;
       }
       button {
         padding: 12px 20px;
@@ -41,7 +42,7 @@
         backdrop-filter: blur(12px);
         border: 1px solid rgba(0, 255, 255, 0.3);
         box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-        z-index: 6;
+        z-index: 10;
       }
       #combo {
         font-size: 34px;
@@ -71,7 +72,7 @@
         justify-content: center;
         align-items: center;
         font-size: 28px;
-        z-index: 20;
+        z-index: 30;
         opacity: 0;
         pointer-events: none;
       }
@@ -97,6 +98,7 @@
         text-shadow: 0 0 15px #fff;
         pointer-events: none;
         opacity: 1;
+        z-index: 50;
         transition: all 0.5s ease-out;
       }
       #difficulty {
@@ -279,7 +281,6 @@
           comboGlow = 0;
           goldMode = false;
           createPopup(l, "MISS");
-          combo = 0;
           return;
         }
         let hitType = "MISS";
@@ -305,7 +306,7 @@
           hitType = "MISS";
         }
         best.hit = true;
-        notes = notes.filter((n) => !n.hit); // remove hit notes
+        notes = notes.filter((n) => !n.hit);
         comboGlow = Math.min(comboGlow + 0.3, 1);
         goldMode = combo >= 100;
         createPopup(l, hitType);
@@ -328,8 +329,9 @@
         div.style.top = c.height - 200 + "px";
         document.body.appendChild(div);
         setTimeout(() => {
-          div.remove();
-        }, 600);
+          div.style.opacity = 0;
+          setTimeout(() => div.remove(), 500);
+        }, 500);
       }
 
       function createParticles(l) {
@@ -377,6 +379,9 @@
         ctx.shadowBlur = 0;
         notes.forEach((n) => {
           let y = c.height - 140 - (n.time - t) * SPEED;
+          if (y > c.height) {
+            combo = 0;
+          }
           if (y > c.height || y < -200) return;
           ctx.shadowColor = `hsl(${n.lane * 90},100%,70%)`;
           ctx.shadowBlur = 20 * (1 + comboGlow + beatIntensity);
