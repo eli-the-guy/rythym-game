@@ -104,6 +104,19 @@
         margin-top: 10px;
         color: white;
       }
+      #touchLanes {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        height: 140px;
+        display: flex;
+        z-index: 15;
+      }
+      .touchLane {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.05);
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+      }
     </style>
   </head>
   <body>
@@ -146,6 +159,12 @@
       <div id="finalRank"></div>
       <button onclick="location.reload()">Restart</button>
     </div>
+    <div id="touchLanes">
+      <div class="touchLane" data-lane="0"></div>
+      <div class="touchLane" data-lane="1"></div>
+      <div class="touchLane" data-lane="2"></div>
+      <div class="touchLane" data-lane="3"></div>
+    </div>
     <video id="bgVideo" autoplay loop muted playsinline></video>
     <canvas id="c"></canvas>
     <audio id="music"></audio>
@@ -171,6 +190,7 @@
       const videoBtn = document.getElementById("videoBtn");
       const menu = document.getElementById("menu");
       const diffSelect = document.getElementById("diffSelect");
+      const touchLanes = document.querySelectorAll(".touchLane");
 
       let notes = [],
         score = 0,
@@ -188,20 +208,14 @@
         goldMode = false;
       let particles = [];
       let difficulty = "normal";
-      let hitPopups = [];
 
-      // Sensitivity
       sens.oninput = (e) => {
         sensitivity = parseFloat(e.target.value);
         sensVal.innerText = sensitivity;
       };
-
-      // Difficulty
       diffSelect.onchange = (e) => {
         difficulty = e.target.value;
       };
-
-      // Video upload
       videoBtn.onclick = () => {
         let input = document.createElement("input");
         input.type = "file";
@@ -212,8 +226,6 @@
         };
         input.click();
       };
-
-      // Audio upload
       audioBtn.onclick = () => {
         let input = document.createElement("input");
         input.type = "file";
@@ -224,8 +236,20 @@
         };
         input.click();
       };
-
       demoBtn.onclick = () => startGame("demo.mp3");
+
+      // Mobile touch controls
+      touchLanes.forEach((lane) => {
+        lane.addEventListener("touchstart", (e) => {
+          let l = parseInt(lane.dataset.lane);
+          holding[l] = true;
+          hit(l);
+        });
+        lane.addEventListener("touchend", (e) => {
+          let l = parseInt(lane.dataset.lane);
+          holding[l] = false;
+        });
+      });
 
       async function startGame(src, file = null) {
         menu.style.display = "none";
@@ -234,7 +258,6 @@
         generateChart(file);
       }
 
-      // Generate chart
       async function generateChart(file) {
         let ctx2 = new AudioContext();
         let buffer;
@@ -252,22 +275,20 @@
         let patterns = ["stream", "chord", "stairs", "jack"];
         let pattern = "stream";
         let nextChange = 0;
-
-        let densityMult = 1;
-        let speedMult = 1;
-        let hitWindowMult = 1;
+        let densityMult = 1,
+          speedMult = 1,
+          hitWindowMult = 1;
         if (difficulty === "easy") {
-          densityMult = 0.6;
+          densityMult = 0.5;
           speedMult = 0.8;
           hitWindowMult = 1.4;
         }
         if (difficulty === "hard") {
-          densityMult = 1.3;
+          densityMult = 1.2;
           speedMult = 1.2;
           hitWindowMult = 0.7;
         }
         SPEED *= speedMult;
-
         for (let i = 0; i < data.length; i += 1024) {
           let amp = Math.abs(data[i]);
           let t = i / buffer.sampleRate;
@@ -284,12 +305,19 @@
             }
             if (pattern == "stairs") lanes = [(lastLane + 1) % 4];
             if (pattern == "jack") lanes = [lastLane];
+            lanes = lanes.filter((l) => {
+              for (let n of notes) {
+                if (n.hold && n.lane === l && Math.abs(n.time - t) < 0.5)
+                  return false;
+              }
+              return true;
+            });
             lanes.forEach((l) => {
               notes.push({
                 lane: l,
                 time: t,
                 hit: false,
-                hold: Math.random() < 0.25,
+                hold: Math.random() < 0.2,
                 duration: 0.5 + Math.random(),
                 holdingStarted: false,
               });
@@ -304,7 +332,6 @@
         loop();
       }
 
-      // Input
       addEventListener("keydown", (e) => {
         let map = { a: 0, s: 1, d: 2, f: 3, q: 0, w: 1, e: 2, r: 3 };
         let k = e.key.toLowerCase();
@@ -319,7 +346,6 @@
         if (map[k] != null) holding[map[k]] = false;
       });
 
-      // Hit detection
       function hit(l) {
         laneFlash[l] = 1;
         let t = performance.now() / 1000 - startTime;
@@ -340,20 +366,19 @@
           createPopup(l, "MISS");
           return;
         }
-
         let hitType = "MISS";
-        if (bd < 0.12 * sensitivity) {
-          score += 300;
+        if (bd < 0.12 * sensitivity * hitWindowMult) {
+          score += 250;
           hits++;
           combo++;
           hitType = "PERFECT";
-        } else if (bd < 0.18 * sensitivity) {
-          score += 200;
+        } else if (bd < 0.18 * sensitivity * hitWindowMult) {
+          score += 180;
           hits++;
           combo++;
           hitType = "EPIC";
-        } else if (bd < 0.3 * sensitivity) {
-          score += 100;
+        } else if (bd < 0.3 * sensitivity * hitWindowMult) {
+          score += 80;
           hits++;
           combo++;
           hitType = "GOOD";
@@ -363,7 +388,6 @@
           goldMode = false;
           hitType = "MISS";
         }
-
         if (best.hold) best.holdingStarted = true;
         best.hit = true;
         comboGlow = Math.min(comboGlow + 0.3, 1);
@@ -373,7 +397,6 @@
         updateRank();
       }
 
-      // Hit popups
       function createPopup(l, type) {
         let div = document.createElement("div");
         div.className = "hitPopup";
@@ -388,13 +411,10 @@
         div.style.left = l * laneW + laneW / 2 - 40 + "px";
         div.style.top = c.height - 200 + "px";
         document.body.appendChild(div);
-        hitPopups.push({ el: div, time: performance.now() / 1000 });
         setTimeout(() => {
           div.remove();
         }, 600);
       }
-
-      // Particles
       function createParticles(l) {
         for (let i = 0; i < 15; i++)
           particles.push({
@@ -405,8 +425,6 @@
             life: 0.6,
           });
       }
-
-      // Rank
       function updateRank() {
         let acc = hits / Math.max(1, total);
         accEl.textContent = Math.round(acc * 100) + "%";
@@ -417,8 +435,6 @@
         else if (acc > 0.5) r = "C";
         rankEl.textContent = r;
       }
-
-      // Draw
       function draw() {
         if (bgVideo.style.display != "block") {
           let time = performance.now() * 0.002;
@@ -428,21 +444,17 @@
           ctx.fillStyle = g;
           ctx.fillRect(0, 0, c.width, c.height);
         } else ctx.clearRect(0, 0, c.width, c.height);
-
         let t = performance.now() / 1000 - startTime;
-        // lane glow
         for (let i = 0; i < 4; i++) {
           laneFlash[i] *= 0.85;
           ctx.fillStyle = `rgba(0,200,255,${0.08 + laneFlash[i] * 0.4 + comboGlow * 0.2})`;
           ctx.fillRect(i * laneW, 0, laneW, c.height);
         }
-        // hit zone
         ctx.shadowColor = "#0ff";
         ctx.shadowBlur = 30 * (1 + comboGlow);
         ctx.fillStyle = "rgba(0,255,255,0.15)";
         ctx.fillRect(0, c.height - 140, c.width, 140);
         ctx.shadowBlur = 0;
-        // notes
         notes.forEach((n) => {
           let y = c.height - 140 - (n.time - t) * SPEED;
           if (y > c.height || y < -200) return;
@@ -458,8 +470,6 @@
           ctx.fillRect(n.lane * laneW + 20, y, laneW - 50, 60);
           ctx.shadowBlur = 0;
         });
-
-        // hold notes
         notes.forEach((n) => {
           if (!n.hold || !n.holdingStarted) return;
           if (holding[n.lane]) {
@@ -470,8 +480,6 @@
             n.holdingStarted = false;
           }
         });
-
-        // particles
         particles.forEach((p) => {
           p.x += p.vx;
           p.y += p.vy;
@@ -481,12 +489,9 @@
           ctx.fillRect(p.x, p.y, 4, 4);
         });
         particles = particles.filter((p) => p.life > 0);
-
         scoreEl.textContent = score;
         comboEl.textContent = combo;
       }
-
-      // Endscreen
       function showEnd() {
         finalScore.textContent = "Score: " + score;
         finalAcc.textContent = "Accuracy: " + accEl.textContent;
@@ -494,8 +499,6 @@
         endScreen.style.opacity = 1;
         endScreen.style.pointerEvents = "auto";
       }
-
-      // Main loop
       function loop() {
         draw();
         let t = performance.now() / 1000 - startTime;
