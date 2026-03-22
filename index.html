@@ -92,9 +92,9 @@
       }
       .hitPopup {
         position: absolute;
-        font-size: 32px;
+        font-size: 36px;
         font-weight: bold;
-        text-shadow: 0 0 10px #0ff;
+        text-shadow: 0 0 15px #fff;
         pointer-events: none;
         opacity: 1;
         transition: all 0.5s ease-out;
@@ -279,6 +279,7 @@
           comboGlow = 0;
           goldMode = false;
           createPopup(l, "MISS");
+          combo = 0;
           return;
         }
         let hitType = "MISS";
