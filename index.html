@@ -1,425 +1,123 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-  <head>
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, user-scalable=no"
-    />
-    <title>MUGA FINAL BOSS 🔥</title>
-    <style>
-      body {
-        margin: 0;
-        background: #000;
-        overflow: hidden;
-        font-family: Arial;
-        color: white;
-        position: relative;
-      }
-      #menu {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-        z-index: 20;
-      }
-      button {
-        padding: 12px 20px;
-        margin: 6px;
-        border: none;
-        border-radius: 12px;
-        background: #111;
-        color: white;
-        cursor: pointer;
-      }
-      #hud {
-        position: fixed;
-        top: 15px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 20px;
-        padding: 12px 20px;
-        border-radius: 20px;
-        background: rgba(20, 20, 40, 0.6);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(0, 255, 255, 0.3);
-        box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-        z-index: 10;
-      }
-      #combo {
-        font-size: 34px;
-        color: #0ff;
-      }
-      #perfectLine {
-        position: absolute;
-        bottom: 140px;
-        width: 100%;
-        height: 6px;
-        background: #0ff;
-        box-shadow:
-          0 0 25px #0ff,
-          0 0 50px #0ff;
-        z-index: 5;
-        pointer-events: none;
-      }
-      #endScreen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.9);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        font-size: 28px;
-        z-index: 30;
-        opacity: 0;
-        pointer-events: none;
-      }
-      #bgVideo {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        z-index: -2;
-        filter: brightness(0.3);
-        display: none;
-      }
-      canvas {
-        position: absolute;
-        z-index: 1;
-      }
-      .hitPopup {
-        position: absolute;
-        font-size: 36px;
-        font-weight: bold;
-        text-shadow: 0 0 15px #fff;
-        pointer-events: none;
-        opacity: 1;
-        z-index: 50;
-        transition: all 0.5s ease-out;
-      }
-      #difficulty {
-        margin-top: 10px;
-        color: white;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="menu">
-      <h2>MUGA FINAL BOSS 🔥</h2>
-      <button id="demoBtn">Play Demo</button>
-      <button id="audioBtn">Load MP3</button>
-      <button id="videoBtn">🎥 Video</button><br />
-      <label>Sensitivity: <span id="sensVal">1.2</span></label
-      ><br />
-      <input
-        type="range"
-        min="0.5"
-        max="2"
-        step="0.1"
-        value="1.2"
-        id="sens"
-      /><br />
-      <div id="difficulty">
-        <label>Difficulty:</label>
-        <select id="diffSelect">
-          <option value="easy">Easy</option>
-          <option value="normal" selected>Normal</option>
-          <option value="hard">Hard</option>
-        </select>
-      </div>
-    </div>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MUGA FINAL BOSS 🔥</title>
+<style>
+body{margin:0;background:#000;overflow:hidden;font-family:Arial;color:white;position:relative;}
+#menu{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:20;}
+button{padding:12px 20px;margin:6px;border:none;border-radius:12px;background:#111;color:white;cursor:pointer;}
+#hud{position:fixed;top:15px;left:50%;transform:translateX(-50%);display:flex;gap:20px;padding:12px 20px;border-radius:20px;background:rgba(20,20,40,0.6);backdrop-filter:blur(12px);border:1px solid rgba(0,255,255,0.3);box-shadow:0 0 20px rgba(0,255,255,0.2);z-index:10;}
+#combo{font-size:34px;color:#0ff;}
+#perfectLine{position:absolute;bottom:140px;width:100%;height:6px;background:#0ff;box-shadow:0 0 25px #0ff,0 0 50px #0ff;z-index:5;pointer-events:none;}
+#endScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:28px;z-index:30;opacity:0;pointer-events:none;}
+#bgVideo{position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:-2;filter:brightness(0.3);display:none;}
+canvas{position:absolute;z-index:1;}
+.hitPopup{position:absolute;font-size:36px;font-weight:bold;text-shadow:0 0 15px #fff;pointer-events:none;opacity:1;z-index:50;transition:all 0.5s ease-out;}
+#difficulty{margin-top:10px;color:white;}
+</style>
+</head>
+<body>
+<div id="menu">
+<h2>MUGA FINAL BOSS 🔥</h2>
+<button id="demoBtn">Play Demo</button>
+<button id="audioBtn">Load MP3</button>
+<button id="videoBtn">🎥 Video</button><br>
+<label>Sensitivity: <span id="sensVal">1.2</span></label><br>
+<input type="range" min="0.5" max="2" step="0.1" value="1.2" id="sens"><br>
+<div id="difficulty">
+<label>Difficulty:</label>
+<select id="diffSelect">
+<option value="easy">Easy</option>
+<option value="normal" selected>Normal</option>
+<option value="hard">Hard</option>
+</select>
+</div>
+</div>
 
-    <div id="hud">
-      <div>Score <span id="score">0</span></div>
-      <div id="combo">0</div>
-      <div>Rank <span id="rank">D</span></div>
-      <div>Acc <span id="acc">100%</span></div>
-    </div>
-    <div id="perfectLine"></div>
-    <div id="endScreen">
-      <h1>RESULTS</h1>
-      <div id="finalScore"></div>
-      <div id="finalAcc"></div>
-      <div id="finalRank"></div>
-      <button onclick="location.reload()">Restart</button>
-    </div>
-    <video id="bgVideo" autoplay loop muted playsinline></video>
-    <canvas id="c"></canvas>
-    <audio id="music"></audio>
-    <script>
-      const c = document.getElementById("c"),
-        ctx = c.getContext("2d");
-      c.width = innerWidth;
-      c.height = innerHeight;
-      let laneW = c.width / 4;
-      const music = document.getElementById("music"),
-        bgVideo = document.getElementById("bgVideo");
-      const scoreEl = document.getElementById("score"),
-        comboEl = document.getElementById("combo"),
-        accEl = document.getElementById("acc"),
-        rankEl = document.getElementById("rank");
-      const sens = document.getElementById("sens"),
-        sensVal = document.getElementById("sensVal");
-      const endScreen = document.getElementById("endScreen"),
-        finalScore = document.getElementById("finalScore"),
-        finalAcc = document.getElementById("finalAcc"),
-        finalRank = document.getElementById("finalRank");
-      const demoBtn = document.getElementById("demoBtn"),
-        audioBtn = document.getElementById("audioBtn"),
-        videoBtn = document.getElementById("videoBtn"),
-        menu = document.getElementById("menu"),
-        diffSelect = document.getElementById("diffSelect");
+<div id="hud">
+<div>Score <span id="score">0</span></div>
+<div id="combo">0</div>
+<div>Rank <span id="rank">D</span></div>
+<div>Acc <span id="acc">100%</span></div>
+</div>
+<div id="perfectLine"></div>
+<div id="endScreen">
+<h1>RESULTS</h1>
+<div id="finalScore"></div>
+<div id="finalAcc"></div>
+<div id="finalRank"></div>
+<button onclick="location.reload()">Restart</button>
+</div>
+<video id="bgVideo" autoplay loop muted playsinline></video>
+<canvas id="c"></canvas>
+<audio id="music"></audio>
+<script>
+const c=document.getElementById("c"),ctx=c.getContext("2d");
+c.width=innerWidth;c.height=innerHeight;
+let laneW=c.width/4;
+const music=document.getElementById("music"), bgVideo=document.getElementById("bgVideo");
+const scoreEl=document.getElementById("score"), comboEl=document.getElementById("combo"), accEl=document.getElementById("acc"), rankEl=document.getElementById("rank");
+const sens=document.getElementById("sens"), sensVal=document.getElementById("sensVal");
+const endScreen=document.getElementById("endScreen"), finalScore=document.getElementById("finalScore"), finalAcc=document.getElementById("finalAcc"), finalRank=document.getElementById("finalRank");
+const demoBtn=document.getElementById("demoBtn"), audioBtn=document.getElementById("audioBtn"), videoBtn=document.getElementById("videoBtn"), menu=document.getElementById("menu"), diffSelect=document.getElementById("diffSelect");
 
-      let notes = [],
-        score = 0,
-        combo = 0,
-        hits = 0,
-        total = 0,
-        startTime = 0,
-        songDuration = 0;
-      let SPEED = 350,
-        sensitivity = 1.2,
-        laneFlash = [0, 0, 0, 0],
-        comboGlow = 0,
-        goldMode = false,
-        particles = [],
-        difficulty = "normal",
-        beatIntensity = 0;
+let notes=[],score=0,combo=0,hits=0,total=0,startTime=0,songDuration=0;
+let SPEED=350,sensitivity=1.2,laneFlash=[0,0,0,0],comboGlow=0,goldMode=false,particles=[],difficulty='normal',beatIntensity=0;
 
-      sens.oninput = (e) => {
-        sensitivity = parseFloat(e.target.value);
-        sensVal.innerText = sensitivity;
-      };
-      diffSelect.onchange = (e) => {
-        difficulty = e.target.value;
-      };
-      window.addEventListener("resize", () => {
-        c.width = innerWidth;
-        c.height = innerHeight;
-        laneW = c.width / 4;
-      });
+sens.oninput=e=>{sensitivity=parseFloat(e.target.value); sensVal.innerText=sensitivity;};
+diffSelect.onchange=e=>{difficulty=e.target.value;};
+window.addEventListener("resize",()=>{c.width=innerWidth;c.height=innerHeight; laneW=c.width/4;});
 
-      videoBtn.onclick = () => {
-        let input = document.createElement("input");
-        input.type = "file";
-        input.accept = "video/*";
-        input.onchange = (e) => {
-          bgVideo.src = URL.createObjectURL(e.target.files[0]);
-          bgVideo.style.display = "block";
-        };
-        input.click();
-      };
-      audioBtn.onclick = () => {
-        let input = document.createElement("input");
-        input.type = "file";
-        input.accept = "audio/*";
-        input.onchange = (e) => {
-          startGame(URL.createObjectURL(e.target.files[0]), e.target.files[0]);
-        };
-        input.click();
-      };
-      demoBtn.onclick = () => startGame("demo.mp3");
+videoBtn.onclick=()=>{let input=document.createElement("input");input.type="file";input.accept="video/*";input.onchange=e=>{bgVideo.src=URL.createObjectURL(e.target.files[0]); bgVideo.style.display="block";}; input.click();};
+audioBtn.onclick=()=>{let input=document.createElement("input");input.type="file";input.accept="audio/*"; input.onchange=e=>{startGame(URL.createObjectURL(e.target.files[0]),e.target.files[0]);}; input.click();};
+demoBtn.onclick=()=>startGame("demo.mp3");
 
-      addEventListener("keydown", (e) => {
-        let map = { q: 0, w: 1, e: 2, r: 3 };
-        if (map[e.key.toLowerCase()] != null) hit(map[e.key.toLowerCase()]);
-      });
+addEventListener("keydown",e=>{let map={q:0,w:1,e:2,r:3}; if(map[e.key.toLowerCase()]!=null) hit(map[e.key.toLowerCase()]);});
 
-      c.addEventListener("touchstart", (e) => {
-        for (let t of e.touches) {
-          let l = Math.floor(t.clientX / laneW);
-          if (l >= 0 && l < 4) hit(l);
-        }
-      });
-      c.addEventListener(
-        "touchmove",
-        (e) => {
-          e.preventDefault();
-          for (let t of e.touches) {
-            let l = Math.floor(t.clientX / laneW);
-            if (l >= 0 && l < 4) hit(l);
-          }
-        },
-        { passive: false },
-      );
+c.addEventListener("touchstart", e => {for(let t of e.touches){let l=Math.floor(t.clientX/laneW); if(l>=0&&l<4) hit(l);}});
+c.addEventListener("touchmove", e => {e.preventDefault(); for(let t of e.touches){let l=Math.floor(t.clientX/laneW); if(l>=0&&l<4) hit(l);}}, {passive:false});
 
-      async function startGame(src, file = null) {
-        menu.style.display = "none";
-        music.src = src;
-        await music.play().catch(() => alert("tap screen"));
-        generateChart(file);
-      }
+async function startGame(src,file=null){menu.style.display="none"; music.src=src; await music.play().catch(()=>alert("tap screen")); generateChart(file);}
 
-      async function generateChart(file) {
-        let ctx2 = new AudioContext(),
-          buffer;
-        if (file) buffer = await ctx2.decodeAudioData(await file.arrayBuffer());
-        else
-          buffer = await ctx2.decodeAudioData(
-            await (await fetch(music.src)).arrayBuffer(),
-          );
-        songDuration = buffer.duration;
-        let data = buffer.getChannelData(0);
-        notes = [];
-        let lastTime = -0.5;
-        for (let i = 0; i < data.length; i += 1024) {
-          let amp = Math.abs(data[i]);
-          let t = i / buffer.sampleRate;
-          if (amp > 0.03 && t - lastTime > 0.5) {
-            notes.push({
-              lane: Math.floor(Math.random() * 4),
-              time: t,
-              hit: false,
-            });
-            lastTime = t;
-          }
-        }
-        total = notes.length;
-        hits = 0;
-        startTime = performance.now() / 1000 + 2;
-        loop();
-      }
+async function generateChart(file){
+let ctx2=new AudioContext(), buffer;
+if(file) buffer=await ctx2.decodeAudioData(await file.arrayBuffer());
+else buffer=await ctx2.decodeAudioData(await (await fetch(music.src)).arrayBuffer());
+songDuration=buffer.duration; let data=buffer.getChannelData(0);
+notes=[]; let lastTime=-0.2; let threshold=0.04;
+for(let i=0;i<data.length;i+=512){
+ let amp=Math.abs(data[i]); let t=i/buffer.sampleRate;
+ if(amp>threshold && t-lastTime>0.25){ // beat matched
+  let lane=Math.floor(Math.random()*4);
+  notes.push({lane:lane,time:t,hit:false}); lastTime=t;
+}}
+total=notes.length; hits=0; startTime=performance.now()/1000+2; loop();}
 
-      function hit(l) {
-        laneFlash[l] = 1;
-        beatIntensity = 1;
-        let t = performance.now() / 1000 - startTime;
-        let best = null,
-          bd = 999;
-        notes.forEach((n) => {
-          if (n.hit || n.lane !== l) return;
-          let d = Math.abs(n.time - t);
-          if (d < bd) {
-            bd = d;
-            best = n;
-          }
-        });
-        if (!best) {
-          combo = 0;
-          comboGlow = 0;
-          goldMode = false;
-          createPopup(l, "MISS");
-          return;
-        }
-        let hitType = "MISS";
-        if (bd < 0.12 * sensitivity) {
-          score += 250;
-          hits++;
-          combo++;
-          hitType = "PERFECT";
-        } else if (bd < 0.18 * sensitivity) {
-          score += 180;
-          hits++;
-          combo++;
-          hitType = "EPIC";
-        } else if (bd < 0.3 * sensitivity) {
-          score += 80;
-          hits++;
-          combo++;
-          hitType = "GOOD";
-        } else {
-          combo = 0;
-          comboGlow = 0;
-          goldMode = false;
-          hitType = "MISS";
-        }
-        best.hit = true;
-        notes = notes.filter((n) => !n.hit);
-        comboGlow = Math.min(comboGlow + 0.3, 1);
-        goldMode = combo >= 100;
-        createPopup(l, hitType);
-        createParticles(l);
-        updateRank();
-      }
+function hit(l){laneFlash[l]=1; beatIntensity=1; let t=(performance.now()/1000-startTime); let best=null, bd=999; notes.forEach(n=>{if(n.hit||n.lane!==l)return; let d=Math.abs(n.time-t); if(d<bd){bd=d; best=n;}}); if(!best){combo=0; comboGlow=0; goldMode=false; createPopup(l,"MISS"); return;} let hitType="MISS"; if(bd<0.12*sensitivity){score+=250; hits++; combo++; hitType="PERFECT";} else if(bd<0.18*sensitivity){score+=180; hits++; combo++; hitType="EPIC";} else if(bd<0.3*sensitivity){score+=80; hits++; combo++; hitType="GOOD";} else {combo=0; comboGlow=0; goldMode=false; hitType="MISS";} best.hit=true; notes = notes.filter(n=>!n.hit); comboGlow=Math.min(comboGlow+0.3,1); goldMode=combo>=100; createPopup(l,hitType); createParticles(l); updateRank();}
 
-      function createPopup(l, type) {
-        let div = document.createElement("div");
-        div.className = "hitPopup";
-        let colors = {
-          PERFECT: "#0ff",
-          EPIC: "#ff0",
-          GOOD: "#0f0",
-          MISS: "#f00",
-        };
-        div.style.color = colors[type] || "#fff";
-        div.innerText = type;
-        div.style.left = l * laneW + laneW / 2 - 40 + "px";
-        div.style.top = c.height - 300 + "px";
-        document.body.appendChild(div);
-        setTimeout(() => {
-          div.style.opacity = 0;
-          setTimeout(() => div.remove(), 500);
-        }, 500);
-      }
+function createPopup(l,type){let div=document.createElement("div"); div.className="hitPopup"; let colors={"PERFECT":"#0ff","EPIC":"#ff0","GOOD":"#0f0","MISS":"#f00"}; div.style.color=colors[type]||"#fff"; div.innerText=type; div.style.left=(l*laneW+laneW/2-40)+"px"; div.style.top=(c.height-300)+"px"; document.body.appendChild(div); setTimeout(()=>{div.style.opacity=0; setTimeout(()=>div.remove(),500);},500);}
 
-      function createParticles(l) {
-        for (let i = 0; i < 15; i++)
-          particles.push({
-            x: l * laneW + laneW / 2,
-            y: c.height - 140,
-            vx: (Math.random() - 0.5) * 6,
-            vy: -Math.random() * 5,
-            life: 0.6,
-          });
-      }
+function createParticles(l){for(let i=0;i<15;i++) particles.push({x:l*laneW+laneW/2, y:c.height-140, vx:(Math.random()-0.5)*6, vy:-Math.random()*5, life:0.6});}
 
-      function updateRank() {
-        let acc = hits / Math.max(1, total);
-        accEl.textContent = Math.round(acc * 100) + "%";
-        let r = "D";
-        if (acc > 0.95) r = "S";
-        else if (acc > 0.85) r = "A";
-        else if (acc > 0.7) r = "B";
-        else if (acc > 0.5) r = "C";
-        rankEl.textContent = r;
-      }
+function updateRank(){let acc=hits/Math.max(1,total); accEl.textContent=Math.round(acc*100)+"%"; let r="D"; if(acc>0.95) r="S"; else if(acc>0.85) r="A"; else if(acc>0.7) r="B"; else if(acc>0.5) r="C"; rankEl.textContent=r;}
 
-      function draw() {
-        if (bgVideo.style.display != "block") {
-          let time = performance.now() * 0.002;
-          let g = ctx.createLinearGradient(0, 0, 0, c.height);
-          g.addColorStop(0, `hsl(${(time * 40) % 360},70%,10%)`);
-          g.addColorStop(1, `hsl(${(time * 40 + 60) % 360},70%,5%)`);
-          ctx.fillStyle = g;
-          ctx.fillRect(0, 0, c.width, c.height);
-        } else ctx.clearRect(0, 0, c.width, c.height);
-        let t = performance.now() / 1000 - startTime;
-        beatIntensity *= 0.9;
-        for (let i = 0; i < 4; i++) {
-          laneFlash[i] *= 0.85;
-          ctx.fillStyle = `rgba(0,200,255,${0.08 + laneFlash[i] * 0.4 + comboGlow * 0.2 + beatIntensity * 0.2})`;
-          ctx.fillRect(i * laneW, 0, laneW, c.height);
-        }
-        ctx.shadowColor = "#0ff";
-        ctx.shadowBlur = 30 * (1 + comboGlow + beatIntensity);
-        ctx.fillStyle = "rgba(0,255,255,0.15)";
-        ctx.fillRect(0, c.height - 140, c.width, 140);
-        ctx.shadowBlur = 0;
-        notes.forEach((n) => {
-          let y = c.height - 140 - (n.time - t) * SPEED;
-          if (y > c.height) {
-            combo = 0;
-          }
-          if (y > c.height || y < -200) return;
-          ctx.shadowColor = `hsl(${n.lane * 90},100%,70%)`;
-          ctx.shadowBlur = 20 * (1 + comboGlow + beatIntensity);
-          ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
-          ctx.fillRect(n.lane * laneW + 20, y, laneW - 50, 60);
-          ctx.shadowBlur = 0;
-        });
-        particles.forEach((p) => {
-          p.x += p.vx;
-          p.y += p.vy;
-          p.vy += 0.15;
-          p.life -= 1 / 60;
-          ctx.fillStyle = `rgba(255,255,255,${p.life})`;
+function draw(){if(bgVideo.style.display!="block"){let time=performance.now()*0.002; let g=ctx.createLinearGradient(0,0,0,c.height); g.addColorStop(0,`hsl(${time*40%360},70%,10%)`); g.addColorStop(1,`hsl(${(time*40+60)%360},70%,5%)`); ctx.fillStyle=g; ctx.fillRect(0,0,c.width,c.height);} else ctx.clearRect(0,0,c.width,c.height);
+let t=(performance.now()/1000-startTime); beatIntensity*=0.9;
+for(let i=0;i<4;i++){laneFlash[i]*=0.85; ctx.fillStyle=`rgba(0,200,255,${0.08+laneFlash[i]*0.4+comboGlow*0.2+beatIntensity*0.2})`; ctx.fillRect(i*laneW,0,laneW,c.height);}
+ctx.shadowColor="#0ff"; ctx.shadowBlur=30*(1+comboGlow+beatIntensity); ctx.fillStyle="rgba(0,255,255,0.15)"; ctx.fillRect(0,c.height-140,c.width,140); ctx.shadowBlur=0;
+notes.forEach(n=>{let y=c.height-140-(n.time-t)*SPEED; if(y>c.height){combo=0;} if(y>c.height||y<-200) return; ctx.shadowColor=`hsl(${n.lane*90},100%,70%)`; ctx.shadowBlur=20*(1+comboGlow+beatIntensity); ctx.fillStyle=`hsl(${n.lane*90},100%,60%)`; ctx.fillRect(n.lane*laneW+20,y,laneW-50,60); ctx.shadowBlur=0;});
+particles.forEach(p=>{p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.life-=1/60; ctx.fillStyle=`rgba(255,255,255,${p.life})`; ctx.fillRect(p.x,p.y,4,4);});
+particles=particles.filter(p=>p.life>0);
+scoreEl.textContent=score; comboEl.textContent=combo;}
+
+function showEnd(){finalScore.textContent="Score: "+score; finalAcc.textContent="Accuracy: "+accEl.textContent; finalRank.textContent="Rank: "+rankEl.textContent; endScreen.style.opacity=1; endScreen.style.pointerEvents="auto";}
+
+function loop(){draw(); let t=(performance.now()/1000-startTime); if(t>songDuration+1){showEnd(); return;} requestAnimationFrame(loop);}
+</script>
+</body>
+</html>
+,${p.life})`;
           ctx.fillRect(p.x, p.y, 4, 4);
         });
         particles = particles.filter((p) => p.life > 0);
