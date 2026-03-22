@@ -12,7 +12,6 @@
         font-family: Arial;
         color: white;
       }
-
       #menu {
         position: absolute;
         top: 50%;
@@ -21,7 +20,6 @@
         text-align: center;
         z-index: 5;
       }
-
       button {
         padding: 12px 20px;
         margin: 6px;
@@ -44,50 +42,13 @@
         background: rgba(20, 20, 40, 0.6);
         backdrop-filter: blur(12px);
         border: 1px solid rgba(0, 255, 255, 0.3);
-        box-shadow:
-          0 0 20px rgba(0, 255, 255, 0.2),
-          inset 0 0 10px rgba(0, 255, 255, 0.15);
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
         z-index: 3;
       }
 
       #combo {
         font-size: 36px;
         color: #0ff;
-      }
-      #rank {
-        font-size: 22px;
-        color: #ff0;
-      }
-      #acc {
-        font-size: 22px;
-        color: #0f0;
-      }
-
-      #perfectLine {
-        position: absolute;
-        bottom: 140px;
-        width: 100%;
-        height: 6px;
-        background: #0ff;
-        opacity: 0.7;
-      }
-
-      #endScreen {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.9);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        font-size: 28px;
-        z-index: 10;
-        opacity: 0;
-        pointer-events: none;
-        transition: 0.3s;
       }
 
       canvas {
@@ -98,27 +59,13 @@
   <body>
     <div id="menu">
       <h2>MUGA FINAL BOSS 🔥</h2>
-      <button id="demoBtn">Play Demo Song</button>
-      <button id="audioBtn">Load MP3</button><br />
-      <label>Sensitivity: <span id="sensVal">1</span></label>
-      <input type="range" min="0.5" max="2" step="0.1" value="1" id="sens" />
+      <button id="demoBtn">Play Demo</button>
+      <button id="audioBtn">Load MP3</button>
     </div>
 
     <div id="hud">
       <div>Score <span id="score">0</span></div>
       <div id="combo">0</div>
-      <div>Rank <span id="rank">D</span></div>
-      <div>Acc <span id="acc">100%</span></div>
-    </div>
-
-    <div id="perfectLine"></div>
-
-    <div id="endScreen">
-      <h1>RESULTS</h1>
-      <div id="finalScore"></div>
-      <div id="finalAcc"></div>
-      <div id="finalRank"></div>
-      <button onclick="location.reload()">Restart</button>
     </div>
 
     <canvas id="c"></canvas>
@@ -132,98 +79,101 @@
 
       const music = document.getElementById("music");
 
-      let notes = [],
-        particles = [],
-        hitTexts = [];
+      let notes = [];
       let score = 0,
         combo = 0,
-        hits = 0,
-        total = 0;
-      let startTime = 0,
-        gameStarted = false,
-        songDuration = 0;
+        startTime = 0;
+      let laneW = c.width / 4,
+        SPEED = 350;
 
-      let laneW = c.width / 4;
-      const SPEED = 350;
-
-      let sensitivity = 1;
       let holding = [false, false, false, false];
+      let laneFlash = [0, 0, 0, 0];
       let comboGlow = 0;
       let goldMode = false;
 
-      sens.oninput = (e) => {
-        sensitivity = parseFloat(e.target.value);
-        sensVal.innerText = sensitivity;
-      };
-
-      // ===== DEMO SONG (CUSTOM CHART) =====
+      // ===== DEMO =====
       demoBtn.onclick = async () => {
         menu.style.display = "none";
-
         music.src = "demo.mp3";
         await music.play().catch(() => alert("tap screen"));
-
-        loadCustomChart();
+        generateChart();
       };
 
-      // ===== CUSTOM CHART =====
-      function loadCustomChart() {
+      // ===== MP3 =====
+      audioBtn.onclick = () => {
+        let input = document.createElement("input");
+        input.type = "file";
+        input.accept = "audio/*";
+
+        input.onchange = async (e) => {
+          let file = e.target.files[0];
+          music.src = URL.createObjectURL(file);
+          await music.play().catch(() => alert("tap"));
+
+          generateChart(file);
+        };
+
+        input.click();
+      };
+
+      // ===== PRO CHART =====
+      async function generateChart(file = null) {
+        let ctx2 = new AudioContext();
+        let buffer;
+
+        if (file) {
+          buffer = await ctx2.decodeAudioData(await file.arrayBuffer());
+        } else {
+          let res = await fetch(music.src);
+          buffer = await ctx2.decodeAudioData(await res.arrayBuffer());
+        }
+
+        let data = buffer.getChannelData(0);
+
         notes = [];
-        score = 0;
-        combo = 0;
-        hits = 0;
-        startTime = performance.now() / 1000;
+        let lastTime = 0;
+        let lastLane = 0;
+        let patterns = ["stream", "chord", "stairs", "jack"];
+        let pattern = "stream";
+        let nextChange = 0;
 
-        let t = 0;
+        for (let i = 0; i < data.length; i += 1024) {
+          let amp = Math.abs(data[i]);
+          let t = i / buffer.sampleRate;
 
-        // intro
-        for (let i = 0; i < 16; i++) {
-          notes.push({ lane: i % 4, time: t, hit: false });
-          t += 0.5;
-        }
+          if (amp > 0.045 && t - lastTime > 0.2) {
+            if (t > nextChange) {
+              pattern = patterns[Math.floor(Math.random() * patterns.length)];
+              nextChange = t + 2;
+            }
 
-        // buildup
-        for (let i = 0; i < 24; i++) {
-          notes.push({ lane: (i % 2) * 2, time: t, hit: false });
-          t += 0.3;
-        }
+            let lanes = [];
 
-        // stairs
-        for (let i = 0; i < 8; i++) {
-          notes.push({ lane: i % 4, time: t, hit: false });
-          t += 0.2;
-        }
+            if (pattern === "stream") lanes = [(lastLane + 1) % 4];
+            if (pattern === "chord") {
+              let l = Math.floor(Math.random() * 4);
+              lanes = [l, (l + 1) % 4];
+            }
+            if (pattern === "stairs") lanes = [(lastLane + 1) % 4];
+            if (pattern === "jack") lanes = [lastLane];
 
-        // drop
-        for (let i = 0; i < 64; i++) {
-          let lane = i % 4;
-          let isHold = Math.random() < 0.35;
+            lanes.forEach((l) => {
+              notes.push({
+                lane: l,
+                time: t,
+                hit: false,
+                hold: Math.random() < 0.25,
+                duration: 0.5 + Math.random(),
+                holdingStarted: false,
+              });
+              lastLane = l;
+            });
 
-          notes.push({
-            lane,
-            time: t,
-            hit: false,
-            hold: isHold,
-            duration: isHold ? 0.5 + Math.random() * 0.7 : 0,
-            holdingStarted: false,
-          });
-
-          if (i % 8 === 0) {
-            notes.push({ lane: (lane + 1) % 4, time: t, hit: false });
+            lastTime = t;
           }
-
-          t += 0.18;
         }
 
-        // outro
-        for (let i = 0; i < 16; i++) {
-          notes.push({ lane: 3 - (i % 4), time: t, hit: false });
-          t += 0.4;
-        }
-
-        songDuration = t;
-        total = notes.length;
-        gameStarted = true;
+        startTime = performance.now() / 1000 + 2;
         loop();
       }
 
@@ -240,30 +190,13 @@
       addEventListener("keyup", (e) => {
         let map = { q: 0, w: 1, e: 2, r: 3, u: 0, i: 1, o: 2, p: 3 };
         let k = e.key.toLowerCase();
-        if (map[k] != null) {
-          holding[map[k]] = false;
-        }
-      });
-
-      // touch
-      c.addEventListener(
-        "touchstart",
-        (e) => {
-          for (let t of e.touches) {
-            let lane = Math.floor(t.clientX / laneW);
-            holding[lane] = true;
-            hit(lane);
-          }
-        },
-        { passive: false },
-      );
-
-      c.addEventListener("touchend", () => {
-        holding = [false, false, false, false];
+        if (map[k] != null) holding[map[k]] = false;
       });
 
       // ===== HIT =====
       function hit(l) {
+        laneFlash[l] = 1;
+
         let t = performance.now() / 1000 - startTime;
         let best = null,
           bd = 999;
@@ -281,54 +214,17 @@
           combo = 0;
           comboGlow = 0;
           goldMode = false;
-          addHitText("MISS", l);
           return;
-        }
-
-        let hitType = "";
-
-        if (bd < 0.12 * sensitivity) {
-          score += 300;
-          hits++;
-          combo++;
-          hitType = "PERFECT";
-        } else if (bd < 0.2 * sensitivity) {
-          score += 150;
-          hits++;
-          combo++;
-          hitType = "EPIC";
-        } else if (bd < 0.3 * sensitivity) {
-          score += 50;
-          hits++;
-          combo++;
-          hitType = "MID";
-        } else {
-          combo = 0;
-          comboGlow = 0;
-          goldMode = false;
-          hitType = "MISS";
         }
 
         if (best.hold) best.holdingStarted = true;
 
         best.hit = true;
+        score += 100;
+        combo++;
+
         comboGlow = Math.min(comboGlow + 0.2, 1);
         goldMode = combo >= 100;
-
-        updateRank();
-        addHitText(hitType, l);
-      }
-
-      // ===== RANK =====
-      function updateRank() {
-        let acc = hits / Math.max(1, total);
-        accEl.textContent = Math.round(acc * 100) + "%";
-        let r = "D";
-        if (acc > 0.95) r = "S";
-        else if (acc > 0.85) r = "A";
-        else if (acc > 0.7) r = "B";
-        else if (acc > 0.5) r = "C";
-        rankEl.textContent = r;
       }
 
       // ===== DRAW =====
@@ -337,40 +233,48 @@
 
         let t = performance.now() / 1000 - startTime;
 
-        // NOTES
+        // lane glow
+        for (let i = 0; i < 4; i++) {
+          laneFlash[i] *= 0.85;
+
+          ctx.fillStyle = `rgba(0,200,255,${0.08 + laneFlash[i] * 0.4 + comboGlow * 0.2})`;
+          ctx.fillRect(i * laneW, 0, laneW, c.height);
+        }
+
+        // hit zone
+        ctx.shadowColor = "#0ff";
+        ctx.shadowBlur = 30 * (1 + comboGlow);
+        ctx.fillStyle = "rgba(0,255,255,0.15)";
+        ctx.fillRect(0, c.height - 140, c.width, 140);
+        ctx.shadowBlur = 0;
+
+        // notes
         notes.forEach((n) => {
           let y = c.height - 140 - (n.time - t) * SPEED;
 
-          // HOLD
+          if (y > c.height || y < -200) return;
+
           if (n.hold) {
             let endY = c.height - 140 - (n.time + n.duration - t) * SPEED;
 
-            ctx.fillStyle = goldMode
-              ? "rgba(255,215,0,0.5)"
-              : "rgba(0,255,255,0.4)";
-            ctx.fillRect(n.lane * laneW + 25, endY, laneW - 50, y - endY);
-
-            ctx.fillStyle = goldMode ? "gold" : "#0ff";
-            ctx.fillRect(n.lane * laneW + 20, y, laneW - 50, 60);
-            return;
+            ctx.fillStyle = "rgba(0,255,255,0.4)";
+            ctx.fillRect(n.lane * laneW + 20, endY, laneW - 50, y - endY);
           }
 
-          // TAP
           if (n.hit) return;
-          ctx.fillStyle = goldMode ? "gold" : "#0ff";
+
+          ctx.shadowColor = `hsl(${n.lane * 90},100%,70%)`;
+          ctx.shadowBlur = 20 * (1 + comboGlow);
+
+          ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
           ctx.fillRect(n.lane * laneW + 20, y, laneW - 50, 60);
+
+          ctx.shadowBlur = 0;
         });
 
-        // HOLD LOGIC
+        // hold logic
         notes.forEach((n) => {
           if (!n.hold || !n.holdingStarted) return;
-
-          let t = performance.now() / 1000 - startTime;
-
-          if (t > n.time + n.duration) {
-            n.holdingStarted = false;
-            return;
-          }
 
           if (holding[n.lane]) {
             score += 2;
@@ -381,30 +285,14 @@
           }
         });
 
-        scoreEl.textContent = score;
-        comboEl.textContent = combo;
+        score.innerText = score;
+        comboEl.innerText = combo;
       }
 
-      // LOOP
+      // ===== LOOP =====
       function loop() {
         draw();
-        if (
-          gameStarted &&
-          performance.now() / 1000 - startTime > songDuration + 1
-        ) {
-          showEnd();
-          gameStarted = false;
-        }
         requestAnimationFrame(loop);
-      }
-
-      // END SCREEN
-      function showEnd() {
-        finalScore.textContent = "Score: " + score;
-        finalAcc.textContent = "Accuracy: " + accEl.textContent;
-        finalRank.textContent = "Rank: " + rankEl.textContent;
-        endScreen.style.opacity = 1;
-        endScreen.style.pointerEvents = "auto";
       }
     </script>
   </body>
