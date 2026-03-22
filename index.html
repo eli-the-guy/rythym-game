@@ -19,7 +19,7 @@
         left: 50%;
         transform: translate(-50%, -50%);
         text-align: center;
-        z-index: 5;
+        z-index: 10;
       }
 
       button {
@@ -38,18 +38,18 @@
         left: 50%;
         transform: translateX(-50%);
         display: flex;
-        gap: 25px;
-        padding: 12px 25px;
+        gap: 20px;
+        padding: 12px 20px;
         border-radius: 20px;
         background: rgba(20, 20, 40, 0.6);
         backdrop-filter: blur(12px);
         border: 1px solid rgba(0, 255, 255, 0.3);
         box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-        z-index: 3;
+        z-index: 6;
       }
 
       #combo {
-        font-size: 36px;
+        font-size: 34px;
         color: #0ff;
       }
 
@@ -57,9 +57,30 @@
         position: absolute;
         bottom: 140px;
         width: 100%;
-        height: 5px;
+        height: 6px;
         background: #0ff;
-        box-shadow: 0 0 20px #0ff;
+        box-shadow:
+          0 0 25px #0ff,
+          0 0 50px #0ff;
+        z-index: 5;
+        pointer-events: none;
+      }
+
+      #endScreen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-size: 28px;
+        z-index: 20;
+        opacity: 0;
+        pointer-events: none;
       }
 
       #bgVideo {
@@ -95,9 +116,19 @@
     <div id="hud">
       <div>Score <span id="score">0</span></div>
       <div id="combo">0</div>
+      <div>Rank <span id="rank">D</span></div>
+      <div>Acc <span id="acc">100%</span></div>
     </div>
 
     <div id="perfectLine"></div>
+
+    <div id="endScreen">
+      <h1>RESULTS</h1>
+      <div id="finalScore"></div>
+      <div id="finalAcc"></div>
+      <div id="finalRank"></div>
+      <button onclick="location.reload()">Restart</button>
+    </div>
 
     <video id="bgVideo" autoplay loop muted playsinline></video>
     <canvas id="c"></canvas>
@@ -112,65 +143,73 @@
       const music = document.getElementById("music");
       const bgVideo = document.getElementById("bgVideo");
 
-      let notes = [];
-      let score = 0,
+      const scoreEl = document.getElementById("score");
+      const comboEl = document.getElementById("combo");
+      const accEl = document.getElementById("acc");
+      const rankEl = document.getElementById("rank");
+
+      let notes = [],
+        score = 0,
         combo = 0,
-        startTime = 0;
+        hits = 0,
+        total = 0;
+      let startTime = 0,
+        songDuration = 0;
+
       let laneW = c.width / 4,
         SPEED = 350;
 
       let sensitivity = 1;
       let holding = [false, false, false, false];
       let laneFlash = [0, 0, 0, 0];
-      let comboGlow = 0;
-      let goldMode = false;
+      let comboGlow = 0,
+        goldMode = false;
 
-      // ===== SENSITIVITY =====
+      // ===== sensitivity =====
       sens.oninput = (e) => {
         sensitivity = parseFloat(e.target.value);
         sensVal.innerText = sensitivity;
       };
 
-      // ===== VIDEO =====
+      // ===== video =====
       videoBtn.onclick = () => {
         let input = document.createElement("input");
         input.type = "file";
         input.accept = "video/*";
         input.onchange = (e) => {
-          let file = e.target.files[0];
-          bgVideo.src = URL.createObjectURL(file);
+          bgVideo.src = URL.createObjectURL(e.target.files[0]);
           bgVideo.style.display = "block";
-          bgVideo.play();
         };
         input.click();
       };
 
-      // ===== DEMO =====
-      demoBtn.onclick = async () => {
+      // ===== start =====
+      async function startGame(src, file = null) {
         menu.style.display = "none";
-        music.src = "demo.mp3";
-        await music.play().catch(() => alert("tap"));
-        generateChart();
-      };
+        menu.style.pointerEvents = "none";
 
-      // ===== MP3 =====
+        music.src = src;
+        await music.play().catch(() => alert("tap screen"));
+
+        generateChart(file);
+      }
+
+      demoBtn.onclick = () => startGame("demo.mp3");
+
       audioBtn.onclick = () => {
         let input = document.createElement("input");
         input.type = "file";
         input.accept = "audio/*";
 
-        input.onchange = async (e) => {
+        input.onchange = (e) => {
           let file = e.target.files[0];
-          music.src = URL.createObjectURL(file);
-          await music.play().catch(() => alert("tap"));
-
-          generateChart(file);
+          startGame(URL.createObjectURL(file), file);
         };
         input.click();
       };
 
-      // ===== PRO CHART =====
-      async function generateChart(file = null) {
+      // ===== chart =====
+      async function generateChart(file) {
         let ctx2 = new AudioContext();
         let buffer;
 
@@ -181,11 +220,13 @@
           buffer = await ctx2.decodeAudioData(await res.arrayBuffer());
         }
 
+        songDuration = buffer.duration;
+
         let data = buffer.getChannelData(0);
 
         notes = [];
-        let lastTime = 0;
-        let lastLane = 0;
+        let lastTime = 0,
+          lastLane = 0;
 
         let patterns = ["stream", "chord", "stairs", "jack"];
         let pattern = "stream";
@@ -227,11 +268,14 @@
           }
         }
 
+        total = notes.length;
+        hits = 0;
+
         startTime = performance.now() / 1000 + 2;
         loop();
       }
 
-      // ===== INPUT =====
+      // ===== input =====
       addEventListener("keydown", (e) => {
         let map = { q: 0, w: 1, e: 2, r: 3, u: 0, i: 1, o: 2, p: 3 };
         let k = e.key.toLowerCase();
@@ -247,7 +291,7 @@
         if (map[k] != null) holding[map[k]] = false;
       });
 
-      // ===== HIT =====
+      // ===== hit =====
       function hit(l) {
         laneFlash[l] = 1;
 
@@ -271,19 +315,50 @@
           return;
         }
 
+        if (bd < 0.12 * sensitivity) {
+          score += 300;
+          hits++;
+          combo++;
+        } else if (bd < 0.2 * sensitivity) {
+          score += 150;
+          hits++;
+          combo++;
+        } else if (bd < 0.3 * sensitivity) {
+          score += 50;
+          hits++;
+          combo++;
+        } else {
+          combo = 0;
+          comboGlow = 0;
+          goldMode = false;
+        }
+
         if (best.hold) best.holdingStarted = true;
 
         best.hit = true;
-        score += 100;
-        combo++;
 
         comboGlow = Math.min(comboGlow + 0.2, 1);
         goldMode = combo >= 100;
+
+        updateRank();
       }
 
-      // ===== DRAW =====
+      // ===== rank =====
+      function updateRank() {
+        let acc = hits / Math.max(1, total);
+        accEl.textContent = Math.round(acc * 100) + "%";
+
+        let r = "D";
+        if (acc > 0.95) r = "S";
+        else if (acc > 0.85) r = "A";
+        else if (acc > 0.7) r = "B";
+        else if (acc > 0.5) r = "C";
+
+        rankEl.textContent = r;
+      }
+
+      // ===== draw =====
       function draw() {
-        // 🌌 reactive background
         if (bgVideo.style.display !== "block") {
           let time = performance.now() * 0.002;
           let g = ctx.createLinearGradient(0, 0, 0, c.height);
@@ -291,9 +366,7 @@
           g.addColorStop(1, `hsl(${(time * 40 + 60) % 360},70%,5%)`);
           ctx.fillStyle = g;
           ctx.fillRect(0, 0, c.width, c.height);
-        } else {
-          ctx.clearRect(0, 0, c.width, c.height);
-        }
+        } else ctx.clearRect(0, 0, c.width, c.height);
 
         let t = performance.now() / 1000 - startTime;
 
@@ -343,13 +416,30 @@
           }
         });
 
-        scoreEl.innerText = score;
-        comboEl.innerText = combo;
+        scoreEl.textContent = score;
+        comboEl.textContent = combo;
       }
 
-      // ===== LOOP =====
+      // ===== end =====
+      function showEnd() {
+        finalScore.textContent = "Score: " + score;
+        finalAcc.textContent = "Accuracy: " + accEl.textContent;
+        finalRank.textContent = "Rank: " + rankEl.textContent;
+
+        endScreen.style.opacity = 1;
+        endScreen.style.pointerEvents = "auto";
+      }
+
+      // ===== loop =====
       function loop() {
         draw();
+
+        let t = performance.now() / 1000 - startTime;
+        if (t > songDuration + 1) {
+          showEnd();
+          return;
+        }
+
         requestAnimationFrame(loop);
       }
     </script>
