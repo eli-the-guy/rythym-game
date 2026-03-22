@@ -224,12 +224,6 @@
           hit(map[k]);
         }
       });
-      addEventListener("keyup", (e) => {
-        let map = { q: 0, w: 1, e: 2, r: 3 };
-        let k = e.key.toLowerCase();
-        if (map[k] != null) {
-        }
-      });
 
       async function startGame(src, file = null) {
         menu.style.display = "none";
@@ -254,7 +248,6 @@
         for (let i = 0; i < data.length; i += 1024) {
           let amp = Math.abs(data[i]);
           let t = i / buffer.sampleRate;
-          // Space notes based on amplitude peaks
           if (amp > 0.03 && t - lastTime > 0.5) {
             let l = Math.floor(Math.random() * 4);
             notes.push({ lane: l, time: t, hit: false });
@@ -311,6 +304,7 @@
           hitType = "MISS";
         }
         best.hit = true;
+        notes = notes.filter((n) => !n.hit); // remove hit notes
         comboGlow = Math.min(comboGlow + 0.3, 1);
         goldMode = combo >= 100;
         createPopup(l, hitType);
