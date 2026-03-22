@@ -1,7 +1,10 @@
 <!doctype html>
 <html>
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
     <title>MUGA FINAL BOSS 🔥</title>
     <style>
       body {
@@ -155,23 +158,24 @@
         ctx = c.getContext("2d");
       c.width = innerWidth;
       c.height = innerHeight;
-      const music = document.getElementById("music");
-      const bgVideo = document.getElementById("bgVideo");
-      const scoreEl = document.getElementById("score");
-      const comboEl = document.getElementById("combo");
-      const accEl = document.getElementById("acc");
-      const rankEl = document.getElementById("rank");
-      const sens = document.getElementById("sens");
-      const sensVal = document.getElementById("sensVal");
-      const endScreen = document.getElementById("endScreen");
-      const finalScore = document.getElementById("finalScore");
-      const finalAcc = document.getElementById("finalAcc");
-      const finalRank = document.getElementById("finalRank");
-      const demoBtn = document.getElementById("demoBtn");
-      const audioBtn = document.getElementById("audioBtn");
-      const videoBtn = document.getElementById("videoBtn");
-      const menu = document.getElementById("menu");
-      const diffSelect = document.getElementById("diffSelect");
+      let laneW = c.width / 4;
+      const music = document.getElementById("music"),
+        bgVideo = document.getElementById("bgVideo");
+      const scoreEl = document.getElementById("score"),
+        comboEl = document.getElementById("combo"),
+        accEl = document.getElementById("acc"),
+        rankEl = document.getElementById("rank");
+      const sens = document.getElementById("sens"),
+        sensVal = document.getElementById("sensVal");
+      const endScreen = document.getElementById("endScreen"),
+        finalScore = document.getElementById("finalScore"),
+        finalAcc = document.getElementById("finalAcc"),
+        finalRank = document.getElementById("finalRank");
+      const demoBtn = document.getElementById("demoBtn"),
+        audioBtn = document.getElementById("audioBtn"),
+        videoBtn = document.getElementById("videoBtn"),
+        menu = document.getElementById("menu"),
+        diffSelect = document.getElementById("diffSelect");
 
       let notes = [],
         score = 0,
@@ -180,15 +184,14 @@
         total = 0,
         startTime = 0,
         songDuration = 0;
-      let laneW = c.width / 4,
-        SPEED = 350;
-      let sensitivity = 1.2;
-      let laneFlash = [0, 0, 0, 0];
-      let comboGlow = 0,
-        goldMode = false;
-      let particles = [];
-      let difficulty = "normal";
-      let beatIntensity = 0;
+      let SPEED = 350,
+        sensitivity = 1.2,
+        laneFlash = [0, 0, 0, 0],
+        comboGlow = 0,
+        goldMode = false,
+        particles = [],
+        difficulty = "normal",
+        beatIntensity = 0;
 
       sens.oninput = (e) => {
         sensitivity = parseFloat(e.target.value);
@@ -197,6 +200,12 @@
       diffSelect.onchange = (e) => {
         difficulty = e.target.value;
       };
+      window.addEventListener("resize", () => {
+        c.width = innerWidth;
+        c.height = innerHeight;
+        laneW = c.width / 4;
+      });
+
       videoBtn.onclick = () => {
         let input = document.createElement("input");
         input.type = "file";
@@ -212,8 +221,7 @@
         input.type = "file";
         input.accept = "audio/*";
         input.onchange = (e) => {
-          let file = e.target.files[0];
-          startGame(URL.createObjectURL(file), file);
+          startGame(URL.createObjectURL(e.target.files[0]), e.target.files[0]);
         };
         input.click();
       };
@@ -221,11 +229,26 @@
 
       addEventListener("keydown", (e) => {
         let map = { q: 0, w: 1, e: 2, r: 3 };
-        let k = e.key.toLowerCase();
-        if (map[k] != null) {
-          hit(map[k]);
+        if (map[e.key.toLowerCase()] != null) hit(map[e.key.toLowerCase()]);
+      });
+
+      c.addEventListener("touchstart", (e) => {
+        for (let t of e.touches) {
+          let l = Math.floor(t.clientX / laneW);
+          if (l >= 0 && l < 4) hit(l);
         }
       });
+      c.addEventListener(
+        "touchmove",
+        (e) => {
+          e.preventDefault();
+          for (let t of e.touches) {
+            let l = Math.floor(t.clientX / laneW);
+            if (l >= 0 && l < 4) hit(l);
+          }
+        },
+        { passive: false },
+      );
 
       async function startGame(src, file = null) {
         menu.style.display = "none";
@@ -235,14 +258,13 @@
       }
 
       async function generateChart(file) {
-        let ctx2 = new AudioContext();
-        let buffer;
-        if (file) {
-          buffer = await ctx2.decodeAudioData(await file.arrayBuffer());
-        } else {
-          let res = await fetch(music.src);
-          buffer = await ctx2.decodeAudioData(await res.arrayBuffer());
-        }
+        let ctx2 = new AudioContext(),
+          buffer;
+        if (file) buffer = await ctx2.decodeAudioData(await file.arrayBuffer());
+        else
+          buffer = await ctx2.decodeAudioData(
+            await (await fetch(music.src)).arrayBuffer(),
+          );
         songDuration = buffer.duration;
         let data = buffer.getChannelData(0);
         notes = [];
@@ -251,8 +273,11 @@
           let amp = Math.abs(data[i]);
           let t = i / buffer.sampleRate;
           if (amp > 0.03 && t - lastTime > 0.5) {
-            let l = Math.floor(Math.random() * 4);
-            notes.push({ lane: l, time: t, hit: false });
+            notes.push({
+              lane: Math.floor(Math.random() * 4),
+              time: t,
+              hit: false,
+            });
             lastTime = t;
           }
         }
