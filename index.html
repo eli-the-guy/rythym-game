@@ -94,7 +94,6 @@
         position: absolute;
         font-size: 32px;
         font-weight: bold;
-        color: #0ff;
         text-shadow: 0 0 10px #0ff;
         pointer-events: none;
         opacity: 1;
@@ -104,19 +103,6 @@
         margin-top: 10px;
         color: white;
       }
-      #touchLanes {
-        position: absolute;
-        bottom: 0;
-        width: 100%;
-        height: 140px;
-        display: flex;
-        z-index: 15;
-      }
-      .touchLane {
-        flex: 1;
-        background: rgba(255, 255, 255, 0.05);
-        border-left: 1px solid rgba(255, 255, 255, 0.1);
-      }
     </style>
   </head>
   <body>
@@ -125,14 +111,14 @@
       <button id="demoBtn">Play Demo</button>
       <button id="audioBtn">Load MP3</button>
       <button id="videoBtn">🎥 Video</button><br />
-      <label>Sensitivity: <span id="sensVal">1</span></label
+      <label>Sensitivity: <span id="sensVal">1.2</span></label
       ><br />
       <input
         type="range"
         min="0.5"
         max="2"
         step="0.1"
-        value="1"
+        value="1.2"
         id="sens"
       /><br />
       <div id="difficulty">
@@ -159,12 +145,6 @@
       <div id="finalRank"></div>
       <button onclick="location.reload()">Restart</button>
     </div>
-    <div id="touchLanes">
-      <div class="touchLane" data-lane="0"></div>
-      <div class="touchLane" data-lane="1"></div>
-      <div class="touchLane" data-lane="2"></div>
-      <div class="touchLane" data-lane="3"></div>
-    </div>
     <video id="bgVideo" autoplay loop muted playsinline></video>
     <canvas id="c"></canvas>
     <audio id="music"></audio>
@@ -190,7 +170,6 @@
       const videoBtn = document.getElementById("videoBtn");
       const menu = document.getElementById("menu");
       const diffSelect = document.getElementById("diffSelect");
-      const touchLanes = document.querySelectorAll(".touchLane");
 
       let notes = [],
         score = 0,
@@ -201,7 +180,7 @@
         songDuration = 0;
       let laneW = c.width / 4,
         SPEED = 350;
-      let sensitivity = 1;
+      let sensitivity = 1.2;
       let holding = [false, false, false, false];
       let laneFlash = [0, 0, 0, 0];
       let comboGlow = 0,
@@ -238,17 +217,18 @@
       };
       demoBtn.onclick = () => startGame("demo.mp3");
 
-      // Mobile touch controls
-      touchLanes.forEach((lane) => {
-        lane.addEventListener("touchstart", (e) => {
-          let l = parseInt(lane.dataset.lane);
-          holding[l] = true;
-          hit(l);
-        });
-        lane.addEventListener("touchend", (e) => {
-          let l = parseInt(lane.dataset.lane);
-          holding[l] = false;
-        });
+      addEventListener("keydown", (e) => {
+        let map = { q: 0, w: 1, e: 2, r: 3 };
+        let k = e.key.toLowerCase();
+        if (map[k] != null) {
+          holding[map[k]] = true;
+          hit(map[k]);
+        }
+      });
+      addEventListener("keyup", (e) => {
+        let map = { q: 0, w: 1, e: 2, r: 3 };
+        let k = e.key.toLowerCase();
+        if (map[k] != null) holding[map[k]] = false;
       });
 
       async function startGame(src, file = null) {
@@ -272,57 +252,28 @@
         notes = [];
         let lastTime = 0,
           lastLane = 0;
-        let patterns = ["stream", "chord", "stairs", "jack"];
-        let pattern = "stream";
-        let nextChange = 0;
-        let densityMult = 1,
-          speedMult = 1,
-          hitWindowMult = 1;
-        if (difficulty === "easy") {
-          densityMult = 0.5;
-          speedMult = 0.8;
-          hitWindowMult = 1.4;
-        }
-        if (difficulty === "hard") {
-          densityMult = 1.2;
-          speedMult = 1.2;
-          hitWindowMult = 0.7;
-        }
-        SPEED *= speedMult;
         for (let i = 0; i < data.length; i += 1024) {
           let amp = Math.abs(data[i]);
           let t = i / buffer.sampleRate;
-          if (amp > 0.045 * densityMult && t - lastTime > 0.2 * sensitivity) {
-            if (t > nextChange) {
-              pattern = patterns[Math.floor(Math.random() * patterns.length)];
-              nextChange = t + 2;
-            }
-            let lanes = [];
-            if (pattern == "stream") lanes = [(lastLane + 1) % 4];
-            if (pattern == "chord") {
-              let l = Math.floor(Math.random() * 4);
-              lanes = [l, (l + 1) % 4];
-            }
-            if (pattern == "stairs") lanes = [(lastLane + 1) % 4];
-            if (pattern == "jack") lanes = [lastLane];
-            lanes = lanes.filter((l) => {
-              for (let n of notes) {
-                if (n.hold && n.lane === l && Math.abs(n.time - t) < 0.5)
-                  return false;
-              }
-              return true;
+          if (amp > 0.03 && t - lastTime > 0.15) {
+            // more music synced
+            let l = Math.floor(Math.random() * 4);
+            // prevent overlapping hold notes
+            if (
+              notes.some(
+                (n) => n.hold && n.lane === l && Math.abs(n.time - t) < 0.5,
+              )
+            )
+              continue;
+            notes.push({
+              lane: l,
+              time: t,
+              hit: false,
+              hold: Math.random() < 0.2,
+              duration: 0.5 + Math.random(),
+              holdingStarted: false,
             });
-            lanes.forEach((l) => {
-              notes.push({
-                lane: l,
-                time: t,
-                hit: false,
-                hold: Math.random() < 0.2,
-                duration: 0.5 + Math.random(),
-                holdingStarted: false,
-              });
-              lastLane = l;
-            });
+            lastLane = l;
             lastTime = t;
           }
         }
@@ -331,20 +282,6 @@
         startTime = performance.now() / 1000 + 2;
         loop();
       }
-
-      addEventListener("keydown", (e) => {
-        let map = { a: 0, s: 1, d: 2, f: 3, q: 0, w: 1, e: 2, r: 3 };
-        let k = e.key.toLowerCase();
-        if (map[k] != null) {
-          holding[map[k]] = true;
-          hit(map[k]);
-        }
-      });
-      addEventListener("keyup", (e) => {
-        let map = { a: 0, s: 1, d: 2, f: 3, q: 0, w: 1, e: 2, r: 3 };
-        let k = e.key.toLowerCase();
-        if (map[k] != null) holding[map[k]] = false;
-      });
 
       function hit(l) {
         laneFlash[l] = 1;
@@ -367,17 +304,17 @@
           return;
         }
         let hitType = "MISS";
-        if (bd < 0.12 * sensitivity * hitWindowMult) {
+        if (bd < 0.12 * sensitivity) {
           score += 250;
           hits++;
           combo++;
           hitType = "PERFECT";
-        } else if (bd < 0.18 * sensitivity * hitWindowMult) {
+        } else if (bd < 0.18 * sensitivity) {
           score += 180;
           hits++;
           combo++;
           hitType = "EPIC";
-        } else if (bd < 0.3 * sensitivity * hitWindowMult) {
+        } else if (bd < 0.3 * sensitivity) {
           score += 80;
           hits++;
           combo++;
@@ -415,6 +352,7 @@
           div.remove();
         }, 600);
       }
+
       function createParticles(l) {
         for (let i = 0; i < 15; i++)
           particles.push({
@@ -425,6 +363,7 @@
             life: 0.6,
           });
       }
+
       function updateRank() {
         let acc = hits / Math.max(1, total);
         accEl.textContent = Math.round(acc * 100) + "%";
@@ -435,6 +374,7 @@
         else if (acc > 0.5) r = "C";
         rankEl.textContent = r;
       }
+
       function draw() {
         if (bgVideo.style.display != "block") {
           let time = performance.now() * 0.002;
@@ -492,6 +432,7 @@
         scoreEl.textContent = score;
         comboEl.textContent = combo;
       }
+
       function showEnd() {
         finalScore.textContent = "Score: " + score;
         finalAcc.textContent = "Accuracy: " + accEl.textContent;
@@ -499,6 +440,7 @@
         endScreen.style.opacity = 1;
         endScreen.style.pointerEvents = "auto";
       }
+
       function loop() {
         draw();
         let t = performance.now() / 1000 - startTime;
