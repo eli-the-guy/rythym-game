@@ -13,7 +13,7 @@
         position: relative;
       }
       #menu {
-        position: absolute;
+        position: fixed;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
@@ -30,8 +30,8 @@
         cursor: pointer;
       }
       #hud {
-        position: absolute;
-        top: 15px;
+        position: fixed;
+        bottom: 15px;
         left: 50%;
         transform: translateX(-50%);
         display: flex;
@@ -61,7 +61,7 @@
         pointer-events: none;
       }
       #endScreen {
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
         width: 100%;
@@ -326,7 +326,7 @@
         div.style.color = colors[type] || "#fff";
         div.innerText = type;
         div.style.left = l * laneW + laneW / 2 - 40 + "px";
-        div.style.top = c.height - 200 + "px";
+        div.style.top = c.height - 300 + "px";
         document.body.appendChild(div);
         setTimeout(() => {
           div.style.opacity = 0;
