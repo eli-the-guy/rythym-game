@@ -187,6 +187,7 @@
         goldMode = false;
       let particles = [];
       let difficulty = "normal";
+      let beatIntensity = 0;
 
       sens.oninput = (e) => {
         sensitivity = parseFloat(e.target.value);
@@ -250,31 +251,14 @@
         songDuration = buffer.duration;
         let data = buffer.getChannelData(0);
         notes = [];
-        let lastTime = 0,
+        let lastTime = -0.5,
           lastLane = 0;
         for (let i = 0; i < data.length; i += 1024) {
           let amp = Math.abs(data[i]);
           let t = i / buffer.sampleRate;
-          // skip spawning if any active hold note exists
-          if (notes.some((n) => n.hold && !n.hit && t - n.time < n.duration))
-            continue;
-          if (amp > 0.03 && t - lastTime > 0.15) {
+          if (amp > 0.03 && t - lastTime > 0.4) {
             let l = Math.floor(Math.random() * 4);
-            // prevent overlapping hold notes on same lane
-            if (
-              notes.some(
-                (n) => n.hold && n.lane === l && Math.abs(n.time - t) < 0.5,
-              )
-            )
-              continue;
-            notes.push({
-              lane: l,
-              time: t,
-              hit: false,
-              hold: Math.random() < 0.2,
-              duration: 0.5 + Math.random(),
-              holdingStarted: false,
-            });
+            notes.push({ lane: l, time: t, hit: false });
             lastLane = l;
             lastTime = t;
           }
@@ -287,6 +271,7 @@
 
       function hit(l) {
         laneFlash[l] = 1;
+        beatIntensity = 1;
         let t = performance.now() / 1000 - startTime;
         let best = null,
           bd = 999;
@@ -327,7 +312,6 @@
           goldMode = false;
           hitType = "MISS";
         }
-        if (best.hold) best.holdingStarted = true;
         best.hit = true;
         comboGlow = Math.min(comboGlow + 0.3, 1);
         goldMode = combo >= 100;
@@ -387,40 +371,25 @@
           ctx.fillRect(0, 0, c.width, c.height);
         } else ctx.clearRect(0, 0, c.width, c.height);
         let t = performance.now() / 1000 - startTime;
+        beatIntensity *= 0.9;
         for (let i = 0; i < 4; i++) {
           laneFlash[i] *= 0.85;
-          ctx.fillStyle = `rgba(0,200,255,${0.08 + laneFlash[i] * 0.4 + comboGlow * 0.2})`;
+          ctx.fillStyle = `rgba(0,200,255,${0.08 + laneFlash[i] * 0.4 + comboGlow * 0.2 + beatIntensity * 0.2})`;
           ctx.fillRect(i * laneW, 0, laneW, c.height);
         }
         ctx.shadowColor = "#0ff";
-        ctx.shadowBlur = 30 * (1 + comboGlow);
+        ctx.shadowBlur = 30 * (1 + comboGlow + beatIntensity);
         ctx.fillStyle = "rgba(0,255,255,0.15)";
         ctx.fillRect(0, c.height - 140, c.width, 140);
         ctx.shadowBlur = 0;
         notes.forEach((n) => {
           let y = c.height - 140 - (n.time - t) * SPEED;
           if (y > c.height || y < -200) return;
-          if (n.hold) {
-            let endY = c.height - 140 - (n.time + n.duration - t) * SPEED;
-            ctx.fillStyle = "rgba(0,255,255,0.4)";
-            ctx.fillRect(n.lane * laneW + 20, endY, laneW - 50, y - endY);
-          }
-          if (n.hit) return;
           ctx.shadowColor = `hsl(${n.lane * 90},100%,70%)`;
-          ctx.shadowBlur = 20 * (1 + comboGlow);
+          ctx.shadowBlur = 20 * (1 + comboGlow + beatIntensity);
           ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
           ctx.fillRect(n.lane * laneW + 20, y, laneW - 50, 60);
           ctx.shadowBlur = 0;
-        });
-        notes.forEach((n) => {
-          if (!n.hold || !n.holdingStarted) return;
-          if (holding[n.lane]) {
-            score += 2;
-            combo++;
-          } else {
-            combo = 0;
-            n.holdingStarted = false;
-          }
         });
         particles.forEach((p) => {
           p.x += p.vx;
