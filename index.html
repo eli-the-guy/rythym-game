@@ -181,7 +181,6 @@
       let laneW = c.width / 4,
         SPEED = 350;
       let sensitivity = 1.2;
-      let holding = [false, false, false, false];
       let laneFlash = [0, 0, 0, 0];
       let comboGlow = 0,
         goldMode = false;
@@ -222,14 +221,14 @@
         let map = { q: 0, w: 1, e: 2, r: 3 };
         let k = e.key.toLowerCase();
         if (map[k] != null) {
-          holding[map[k]] = true;
           hit(map[k]);
         }
       });
       addEventListener("keyup", (e) => {
         let map = { q: 0, w: 1, e: 2, r: 3 };
         let k = e.key.toLowerCase();
-        if (map[k] != null) holding[map[k]] = false;
+        if (map[k] != null) {
+        }
       });
 
       async function startGame(src, file = null) {
@@ -251,15 +250,14 @@
         songDuration = buffer.duration;
         let data = buffer.getChannelData(0);
         notes = [];
-        let lastTime = -0.5,
-          lastLane = 0;
+        let lastTime = -0.5;
         for (let i = 0; i < data.length; i += 1024) {
           let amp = Math.abs(data[i]);
           let t = i / buffer.sampleRate;
-          if (amp > 0.03 && t - lastTime > 0.4) {
+          // Space notes based on amplitude peaks
+          if (amp > 0.03 && t - lastTime > 0.5) {
             let l = Math.floor(Math.random() * 4);
             notes.push({ lane: l, time: t, hit: false });
-            lastLane = l;
             lastTime = t;
           }
         }
