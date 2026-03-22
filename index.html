@@ -12,6 +12,7 @@
         font-family: Arial;
         color: white;
       }
+
       #menu {
         position: absolute;
         top: 50%;
@@ -20,6 +21,7 @@
         text-align: center;
         z-index: 5;
       }
+
       button {
         padding: 12px 20px;
         margin: 6px;
@@ -51,8 +53,30 @@
         color: #0ff;
       }
 
+      #perfectLine {
+        position: absolute;
+        bottom: 140px;
+        width: 100%;
+        height: 5px;
+        background: #0ff;
+        box-shadow: 0 0 20px #0ff;
+      }
+
+      #bgVideo {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: -2;
+        filter: brightness(0.3);
+        display: none;
+      }
+
       canvas {
         position: absolute;
+        z-index: 1;
       }
     </style>
   </head>
@@ -61,6 +85,11 @@
       <h2>MUGA FINAL BOSS 🔥</h2>
       <button id="demoBtn">Play Demo</button>
       <button id="audioBtn">Load MP3</button>
+      <button id="videoBtn">🎥 Video</button><br />
+
+      <label>Sensitivity: <span id="sensVal">1</span></label
+      ><br />
+      <input type="range" min="0.5" max="2" step="0.1" value="1" id="sens" />
     </div>
 
     <div id="hud">
@@ -68,6 +97,9 @@
       <div id="combo">0</div>
     </div>
 
+    <div id="perfectLine"></div>
+
+    <video id="bgVideo" autoplay loop muted playsinline></video>
     <canvas id="c"></canvas>
     <audio id="music"></audio>
 
@@ -78,6 +110,7 @@
       c.height = innerHeight;
 
       const music = document.getElementById("music");
+      const bgVideo = document.getElementById("bgVideo");
 
       let notes = [];
       let score = 0,
@@ -86,16 +119,37 @@
       let laneW = c.width / 4,
         SPEED = 350;
 
+      let sensitivity = 1;
       let holding = [false, false, false, false];
       let laneFlash = [0, 0, 0, 0];
       let comboGlow = 0;
       let goldMode = false;
 
+      // ===== SENSITIVITY =====
+      sens.oninput = (e) => {
+        sensitivity = parseFloat(e.target.value);
+        sensVal.innerText = sensitivity;
+      };
+
+      // ===== VIDEO =====
+      videoBtn.onclick = () => {
+        let input = document.createElement("input");
+        input.type = "file";
+        input.accept = "video/*";
+        input.onchange = (e) => {
+          let file = e.target.files[0];
+          bgVideo.src = URL.createObjectURL(file);
+          bgVideo.style.display = "block";
+          bgVideo.play();
+        };
+        input.click();
+      };
+
       // ===== DEMO =====
       demoBtn.onclick = async () => {
         menu.style.display = "none";
         music.src = "demo.mp3";
-        await music.play().catch(() => alert("tap screen"));
+        await music.play().catch(() => alert("tap"));
         generateChart();
       };
 
@@ -112,7 +166,6 @@
 
           generateChart(file);
         };
-
         input.click();
       };
 
@@ -133,6 +186,7 @@
         notes = [];
         let lastTime = 0;
         let lastLane = 0;
+
         let patterns = ["stream", "chord", "stairs", "jack"];
         let pattern = "stream";
         let nextChange = 0;
@@ -141,7 +195,7 @@
           let amp = Math.abs(data[i]);
           let t = i / buffer.sampleRate;
 
-          if (amp > 0.045 && t - lastTime > 0.2) {
+          if (amp > 0.045 && t - lastTime > 0.2 * sensitivity) {
             if (t > nextChange) {
               pattern = patterns[Math.floor(Math.random() * patterns.length)];
               nextChange = t + 2;
@@ -229,14 +283,23 @@
 
       // ===== DRAW =====
       function draw() {
-        ctx.clearRect(0, 0, c.width, c.height);
+        // 🌌 reactive background
+        if (bgVideo.style.display !== "block") {
+          let time = performance.now() * 0.002;
+          let g = ctx.createLinearGradient(0, 0, 0, c.height);
+          g.addColorStop(0, `hsl(${(time * 40) % 360},70%,10%)`);
+          g.addColorStop(1, `hsl(${(time * 40 + 60) % 360},70%,5%)`);
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, c.width, c.height);
+        } else {
+          ctx.clearRect(0, 0, c.width, c.height);
+        }
 
         let t = performance.now() / 1000 - startTime;
 
         // lane glow
         for (let i = 0; i < 4; i++) {
           laneFlash[i] *= 0.85;
-
           ctx.fillStyle = `rgba(0,200,255,${0.08 + laneFlash[i] * 0.4 + comboGlow * 0.2})`;
           ctx.fillRect(i * laneW, 0, laneW, c.height);
         }
@@ -251,12 +314,10 @@
         // notes
         notes.forEach((n) => {
           let y = c.height - 140 - (n.time - t) * SPEED;
-
           if (y > c.height || y < -200) return;
 
           if (n.hold) {
             let endY = c.height - 140 - (n.time + n.duration - t) * SPEED;
-
             ctx.fillStyle = "rgba(0,255,255,0.4)";
             ctx.fillRect(n.lane * laneW + 20, endY, laneW - 50, y - endY);
           }
@@ -265,17 +326,14 @@
 
           ctx.shadowColor = `hsl(${n.lane * 90},100%,70%)`;
           ctx.shadowBlur = 20 * (1 + comboGlow);
-
           ctx.fillStyle = `hsl(${n.lane * 90},100%,60%)`;
           ctx.fillRect(n.lane * laneW + 20, y, laneW - 50, 60);
-
           ctx.shadowBlur = 0;
         });
 
         // hold logic
         notes.forEach((n) => {
           if (!n.hold || !n.holdingStarted) return;
-
           if (holding[n.lane]) {
             score += 2;
             combo++;
@@ -285,7 +343,7 @@
           }
         });
 
-        score.innerText = score;
+        scoreEl.innerText = score;
         comboEl.innerText = combo;
       }
 
