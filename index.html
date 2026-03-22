@@ -255,10 +255,12 @@
         for (let i = 0; i < data.length; i += 1024) {
           let amp = Math.abs(data[i]);
           let t = i / buffer.sampleRate;
+          // skip spawning if any active hold note exists
+          if (notes.some((n) => n.hold && !n.hit && t - n.time < n.duration))
+            continue;
           if (amp > 0.03 && t - lastTime > 0.15) {
-            // more music synced
             let l = Math.floor(Math.random() * 4);
-            // prevent overlapping hold notes
+            // prevent overlapping hold notes on same lane
             if (
               notes.some(
                 (n) => n.hold && n.lane === l && Math.abs(n.time - t) < 0.5,
